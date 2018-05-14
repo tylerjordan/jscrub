@@ -48,6 +48,7 @@ if __name__ == '__main__':
         print "Problem detecting OS type..."
         quit()
     # Argument Parser
+    # User will either provide an input_file or a folder structure to walk through and scrub all files.
     parser = argparse.ArgumentParser()
     parser.add_argument("input_file", type=str, help="input ASCII-formatted filename")
     parser.add_argument("recurse_folder", type=str, help="directory to be scrubbed")
