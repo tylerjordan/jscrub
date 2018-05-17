@@ -26,22 +26,27 @@ def detect_env():
     :param: None
     :return: None
     """
+    """
     global iplist_dir
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     if platform.system().lower() == "windows":
-        #print "Environment Windows!"
+        print "Environment Windows!"
         iplist_dir = os.path.join(dir_path, "data\\iplists")
 
     else:
-        #print "Environment Linux/MAC!"
+        print "Environment Linux/MAC!"
         iplist_dir = os.path.join(dir_path, "data/iplists")
 
     # Statically defined files and logs
     template_file = os.path.join(dir_path, template_dir, "Template.conf")
-
+    """
 # Function for scrubbing a file
-def scrub_file(input_file, ipmap_file, term_file):
+# How this scrub function works:
+# 1. Find all ipv4 terms in a line of text
+# 2. Search for existing replacements, if they don't exist, create new ones
+# 3. Create substrings of the remaining text
+def scrub_file(input_file, ipmap_file=None, term_file=None):
     ipv4_regex = re.compile("([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                                 "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                                 "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
@@ -56,19 +61,42 @@ def scrub_file(input_file, ipmap_file, term_file):
                             "{0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:)"
                             "{1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9])"
                             "{0,1}[0-9]))")
-
-
+    regexs = [ipv4_regex, ipv6_regex]
     # Load file into a list
-    line_list = txt_to_list(txt_file)
+    line_list = txt_to_list(input_file)
 
-
-
-    # Check if file list contains content
+    # Check for content using provided regexs
     if line_list:
         for line in line_list:
-            # Check if line contains any of the IPs or terms we are looking for
-            re.match()
+            print "Beginning Line: {0}\n".format(line)
+            for regex in regexs:
+                new_line = ""
+                print "Start Line: {0}".format(line)
+                # Get the start and end indexes for ipv4 addresses
+                indicies = [[m.start(),m.end()] for m in regex.finditer(line)]
+                # Create default start and end indicies
+                frag_start = 0
+                frag_end = len(line)
+                # Loop over indicies
+                for ipindex in indicies:
+                    # This adds the line segment before the ip
+                    new_line += line[frag_start:ipindex[0]]
+                    # This adds the replacement ip
+                    #new_line += get_replacement_ip(line[ipindex[0]:ipindex[1]])
+                    new_line += "100.100.1.1"
+                    # Update the frag_start to last index
+                    frag_start = ipindex[1]
+                # Check if we still have some text after the last ip. If no matches were made this simply add the entire
+                # line unchanged
+                if frag_start < frag_end:
+                    new_line += line[frag_start:frag_end]
+                # Change line to the "modified" line
+                line = new_line
+                print "Modified Line: {0}\n".format(line)
 
+# Checks the ip against a
+def get_replacement_ip(ip):
+    pass
 
 # START OF SCRIPT #
 if __name__ == '__main__':
@@ -81,7 +109,7 @@ if __name__ == '__main__':
     # User will either provide an input_file or a folder structure to walk through and scrub all files.
     parser = argparse.ArgumentParser()
     parser.add_argument("input_file", type=str, help="input ASCII-formatted filename")
-    parser.add_argument("-i" "--ipmap_file", type=str, help="ipmap support files")
+    parser.add_argument("-i", "--ipmap_file", type=str, help="ipmap support files")
     args = parser.parse_args()
 
     # Input arguments
@@ -97,17 +125,21 @@ if __name__ == '__main__':
     ipmap_ld = []
 
     # Main Program Loop
+    print "input_file: {0}".format(input_file)
+    print "ipmap_file: {0}".format(ipmap_file)
+    print "Starting Main Program Loop"
     try:
         # Load the ipmap file into a list dictionary, if it exists...
         if ipmap_file:
-            ipmap_ld = csvListDict(fileName)
+            ipmap_ld = csvListDict(ipmap_file)
 
         # Run this if the argument is a directory...
         if os.path.isdir(input_file):
             pass
         # Otherwise, this is a file...
         else:
-
+            # Run the scrub function
+            scrub_file(input_file)
             quit()
     except KeyboardInterrupt:
         print 'Exiting...'
