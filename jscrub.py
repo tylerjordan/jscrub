@@ -82,7 +82,7 @@ def scrub_file(input_file, ipmap_file=None, term_file=None):
                     # This adds the line segment before the ip
                     new_line += line[frag_start:ipindex[0]]
                     # This adds the replacement ip
-                    #new_line += get_replacement_ip(line[ipindex[0]:ipindex[1]])
+                    get_replacement_ip(line[ipindex[0]:ipindex[1]], ipmap_file)
                     new_line += "100.100.1.1"
                     # Update the frag_start to last index
                     frag_start = ipindex[1]
@@ -94,9 +94,54 @@ def scrub_file(input_file, ipmap_file=None, term_file=None):
                 line = new_line
                 print "Modified Line: {0}\n".format(line)
 
-# Checks the ip against a
-def get_replacement_ip(ip):
-    pass
+# Checks the provided IP against an optional list of IPs or creates a random one
+def get_replacement_ip(raw_ip, ipmap_file):
+    masked = False
+    mask = "32"
+    ip = raw_ip
+    # Determine if this is a masked IP, assume /32 if no mask
+    if ":" in raw_ip:
+        print "IP: {0} is an IPv6 address.".format(ip)
+        mask = "128"
+        return "fe80::feeb:daed"
+    elif "/" in raw_ip:
+        print "IP: {0} is masked.".format(ip)
+        masked = True
+        mask = raw_ip.split("/")[1]
+        ip = raw_ip.split("/")[0]
+    else:
+        print "IP: {0} is NOT masked.".format(ip)
+    print "Mask: {0}".format(mask)
+
+    # Check if this IP is part of the excluded list or matches one of the
+    line_list = txt_to_list(ipmap_file)
+    exclude_list = []
+    include_list = []
+    on_include = False
+    # Loop over ipmap file and create an exclude list and include listdict
+    for line in line_list:
+        # Check if there is text on this line...
+        if line:
+            # Check for "INCLUDE" text...
+            if "INCLUDE" in line:
+                on_include = True
+            # If we are in INCLUDE section...
+            elif on_include:
+                src_dest = line.split(",")
+                src_ip = src_dest[0]
+                dest_ip = src_dest[1]
+                include.append({"src_ip": src_dest[0], "dest_ip": src_dest[1]})
+            # If we are in EXCLUDE section...
+            else:
+                exclude.append(line)
+    # Loop over exclude IPs
+    for exc_ip in exclude_list:
+        if IPAddress(ip) in IPNetwork(exc_ip):
+            return None
+    # Loop over include IPs
+    for inc_ip in include_list:
+        if IPNetwork(inc_ip["src_ip"])
+
 
 # START OF SCRIPT #
 if __name__ == '__main__':
