@@ -130,10 +130,10 @@ def get_replacement_ip(raw_ip, ipmap_file):
                 src_dest = line.split(",")
                 src_ip = src_dest[0]
                 dest_ip = src_dest[1]
-                include.append({"src_ip": src_dest[0], "dest_ip": src_dest[1]})
+                include_list.append({"src_ip": src_dest[0], "dest_ip": src_dest[1]})
             # If we are in EXCLUDE section...
             else:
-                exclude.append(line)
+                exclude_list.append(line)
     # Loop over exclude IPs
     for exc_ip in exclude_list:
         if IPAddress(ip) in IPNetwork(exc_ip):
