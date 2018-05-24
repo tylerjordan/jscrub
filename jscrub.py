@@ -68,10 +68,10 @@ def scrub_file(input_file, ipmap_file=None, term_file=None):
     # Check for content using provided regexs
     if line_list:
         for line in line_list:
-            print "Beginning Line: {0}\n".format(line)
+            #print "Beginning Line: {0}\n".format(line)
             for regex in regexs:
                 new_line = ""
-                print "Start Line: {0}".format(line)
+                #print "Start Line: {0}".format(line)
                 # Get the start and end indexes for ipv4 addresses
                 indicies = [[m.start(),m.end()] for m in regex.finditer(line)]
                 # Create default start and end indicies
@@ -92,13 +92,14 @@ def scrub_file(input_file, ipmap_file=None, term_file=None):
                     new_line += line[frag_start:frag_end]
                 # Change line to the "modified" line
                 line = new_line
-                print "Modified Line: {0}\n".format(line)
+                #print "Modified Line: {0}\n".format(line)
 
 # Checks the provided IP against an optional list of IPs or creates a random one
 def get_replacement_ip(raw_ip, ipmap_file):
+    print "IPMAP FILE: {0}".format(ipmap_file)
     masked = False
     mask = "32"
-    ip = raw_ip
+    ip = str(raw_ip)
     # Determine if this is a masked IP, assume /32 if no mask
     if ":" in raw_ip:
         print "IP: {0} is an IPv6 address.".format(ip)
@@ -133,14 +134,18 @@ def get_replacement_ip(raw_ip, ipmap_file):
                 include_list.append({"src_ip": src_dest[0], "dest_ip": src_dest[1]})
             # If we are in EXCLUDE section...
             else:
-                exclude_list.append(line)
+                if not "EXCLUDE" in line:
+                    exclude_list.append(line)
     # Loop over exclude IPs
+    print "Execlude List: {0}".format(exclude_list)
     for exc_ip in exclude_list:
         if IPAddress(ip) in IPNetwork(exc_ip):
+            print "MATCHED! IP: {0} matched IP: {1}".format(ip, exc_ip)
             return None
+
     # Loop over include IPs
-    for inc_ip in include_list:
-        if IPNetwork(inc_ip["src_ip"])
+    #for inc_ip in include_list:
+    #    if IPNetwork(inc_ip["src_ip"])
 
 
 # START OF SCRIPT #
@@ -184,7 +189,7 @@ if __name__ == '__main__':
         # Otherwise, this is a file...
         else:
             # Run the scrub function
-            scrub_file(input_file)
+            scrub_file(input_file, ipmap_file)
             quit()
     except KeyboardInterrupt:
         print 'Exiting...'
