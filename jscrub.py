@@ -165,6 +165,7 @@ def get_replacement_ip(raw_ip, include_list, exclude_list):
                     return mydict['src_ip']
             # This executes if the match was not exact, meaning, we need an entry for this IP
             else:
+                # Check if the match was the network of this IP
                 pass
         # This executes if is_included doesn't return a match, an unmatched entry!
         else:
