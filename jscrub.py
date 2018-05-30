@@ -4,7 +4,7 @@ __email__ = "tjordan@juniper.net"
 
 import datetime
 import platform
-import os
+import os, sys
 import netaddr
 import argparse
 
@@ -15,6 +15,7 @@ from pprint import pprint
 from os import path
 from operator import itemgetter
 from netaddr import IPAddress, IPNetwork
+from sys import stdout
 
 # Paths
 mypwd = ''
@@ -153,18 +154,20 @@ def get_replacement_ip(raw_ip, include_list, exclude_list):
 
     # Matching procedure
     if not is_excluded(exclude_list, ip):
-        mydict = is_included(include_list, ipmasked)
+        mydict = is_included(include_list, ip, ipmasked)
         # This executes if is_included returns a match
         if mydict:
-            print "IP: {0} - Returned: {1}".format(ip, mydict)
+            stdout.write("IP: {0} - Returned: {1} - ".format(ip, mydict))
             # This executes if the match was exact, meaning, no new entries are required
-            if ipmasked == mydict['src_ip']:
+            if ipmasked == (mydict['src_ip'] + "/" + mydict['mask']):
+                print "Exact Match!"
                 if masked:
                     return mydict['src_ip'] + "/" + mydict['mask']
                 else:
                     return mydict['src_ip']
             # This executes if the match was not exact, meaning, we need an entry for this IP
             else:
+                print "Partial Match!"
                 # Check if the match was the network of this IP
                 pass
         # This executes if is_included doesn't return a match, an unmatched entry!
@@ -185,13 +188,20 @@ def is_excluded(exclude_list, ip):
     return matched
 
 # Check included, if false, create new entry , if true, return the dictionary match
-def is_included(include_list, ipmasked):
+def is_included(include_list, ip, ipmasked):
     # Loop over include IPs
     mymatch = {}
     for inc_ip in include_list:
         # If a match on the IP is made, we will finish scanning options to see if a more closer match exists
-        if IPNetwork(ipmasked) in IPNetwork(inc_ip['src_ip'] + "/" + inc_ip['mask']):
-            #print "MATCHED: {0} with: {1}".format(ipmasked, inc_ip["src_ip"])
+        src_ip = IPNetwork(ip + "/" + inc_ip['mask']).network
+        dest_ip = IPAddress(inc_ip['src_ip'])
+        # This matches the IP. If this match is made immediately return it
+        if ip == inc_ip['src_ip']:
+            print "IP MATCHED: {0} with: {1}".format(ip, inc_ip['src_ip'])
+            return inc_ip
+        # This matches the network. If this match is made continue scanning in case an IP match exists
+        elif src_ip == dest_ip:
+            print "NETWORK MATCHED: {0} with: {1}".format(src_ip, dest_ip)
             mymatch = inc_ip
     return mymatch
 
