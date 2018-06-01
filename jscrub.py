@@ -16,6 +16,7 @@ from os import path
 from operator import itemgetter
 from netaddr import IPAddress, IPNetwork
 from sys import stdout
+from random import randrange
 
 # Paths
 mypwd = ''
@@ -121,9 +122,8 @@ def scrub_file(input_file):
                 for ipindex in indicies:
                     # This adds the line segment before the ip
                     new_line += line[frag_start:ipindex[0]]
-                    # This adds the replacement ip
-                    get_replacement_ip(str(line[ipindex[0]:ipindex[1]]))
-                    new_line += "100.100.1.1"
+                    # This runs the function for finding the correct IP or creating one using provided file content
+                    new_line += get_replacement_ip(str(line[ipindex[0]:ipindex[1]]))
                     # Update the frag_start to last index
                     frag_start = ipindex[1]
                 # Check if we still have some text after the last ip. If no matches were made this simply add the entire
@@ -133,6 +133,42 @@ def scrub_file(input_file):
                 # Change line to the "modified" line
                 line = new_line
                 #print "Modified Line: {0}\n".format(line)
+
+# Creates an IP using a network ip/mask or just mask
+# /0 - /7 -> Not defined
+# /8 - /15 -> Randomize 1st octet, keep last 3
+# /16 - /23 -> Randomize first 2 octets, keep last 2
+# /24 - /31 -> Randomize first 3 octets, keep last 1
+# /32 -> Randomize all octets
+def generate_random_ip(mask, ip=None):
+    not_valid = True
+    while not_valid:
+        octet1 = str(randrange(1, 254))
+        octet2 = str(randrange(1, 256))
+        octet3 = str(randrange(1, 256))
+        octet4 = str(randrange(1, 256))
+        # If there are restritions...
+        if ip:
+            ip_octets = ip.split(".")
+            if 0 <= int(mask) <= 7:
+                octet1 = ip_octets[0]
+                octet2 = ip_octets[1]
+                octet3 = ip_octets[2]
+                octet4 = ip_octets[3]
+            elif 8 <= int(mask) <= 15:
+                octet2 = ip_octets[1]
+                octet3 = ip_octets[2]
+                octet4 = ip_octets[3]
+            elif 16 <= int(mask) <= 23:
+                octet3 = ip_octets[2]
+                octet4 = ip_octets[3]
+            elif 24 <= int(mask) <= 31:
+                octet4 = ip_octets[3]
+        # Assemble the IP address
+        ip = ".".join([octet1,octet2,octet3,octet4])
+        if not is_excluded(ip):
+            not_valid = False
+            return ip
 
 # Checks the provided IP against an optional list of IPs or creates a random one
 def get_replacement_ip(raw_ip):
@@ -164,26 +200,45 @@ def get_replacement_ip(raw_ip):
             # exact match.
             if 'ip' in mydict['match'] and 'net' in mydict['match']:
                 print "Analysis: IP and Network Match!\n"
-                if masked:
-                    return mydict['dest_ip'] + "/" + mydict['mask']
-                else:
-                    return mydict['dest_ip']
+                # Return masked or unmasked depending on calling requirement
+                if masked: return mydict['dest_ip'] + "/" + mydict['mask']
+                else: return mydict['dest_ip']
             # This succeeds if the match was exact, but a corresponding network does not exist, create it.
             elif 'ip' in mydict['match']:
                 print "Analysis: IP ONLY Match!\n"
-                # Check if the mask is different and if the provided mask is reliable
-                if targ_mask != mydict['mask'] and masked:
+                # Check if the target mask is smaller than existing, replace if this is the case
+                if targ_mask < mydict['mask']:
                     # Change entry to reflect provided mask
                     mydict = change_dict(include_list, 'src_ip', mydict['src_ip'], 'mask', targ_mask)
+                # Return masked or unmasked depending on calling requirement
+                if masked: return mydict['dest_ip'] + "/" + targ_mask
+                else: return mydict['dest_ip']
             # This succeeds if the network was matched, only need to create an entry for the exact IP
             elif 'net' in mydict['match']:
+                # Create new IP entry, need to use the network portion of the dest_ip and host portion of targ_ip
+                new_ip = ""
                 print "Analysis: Network ONLY Match!\n"
+                # Add the new IP to the include_list
+                newdict = {'src_ip': targ_ip, 'mask': mydict['mask'], 'dest_ip': new_ip}
+                include_list.append(newdict)
+                # Return masked or unmasked depending on calling requirement
+                if masked: return mydict['dest_ip'] + "/" + targ_mask
+                else: return mydict['dest_ip']
             # This executes if the match was not exact, meaning, we need an entry for this IP
             else:
                 print "Analysis: ERROR - Should not execute, this value is invalid: {0}\n".format(mydict['match'])
         # This executes if is_included doesn't return a match, an unmatched entry!
         else:
             print "Analysis: No IPs Matched: {0}\n".format(targ_ip)
+            # Create new IP
+            new_ip = generate_random_ip(mydict['mask'], mydict['dest'])
+            """
+            Targ_IP: 10.106.137.201
+            Targ_Mask: 32
+            Src_IP: 10.106.137.200
+            Dest_IP: 22.12.32.200
+            Mask: 29
+            """
     else:
         print "Analysis: Matched an Excluded IP or Network: {0}\n".format(targ_ip)
 
