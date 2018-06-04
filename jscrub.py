@@ -140,30 +140,35 @@ def scrub_file(input_file):
 # /16 - /23 -> Randomize first 2 octets, keep last 2
 # /24 - /31 -> Randomize first 3 octets, keep last 1
 # /32 -> Randomize all octets
-def generate_random_ip(mask, ip=None):
+#
+# If a network is provided, the network portion of the IP address will be used.
+# If a network is not provided, the network will be randomly generated.
+def generate_ip(mask, host, network=None):
     not_valid = True
     while not_valid:
-        octet1 = str(randrange(1, 254))
-        octet2 = str(randrange(1, 256))
-        octet3 = str(randrange(1, 256))
-        octet4 = str(randrange(1, 256))
+        if not network:
+            octet1 = str(randrange(1, 254))
+            octet2 = str(randrange(1, 256))
+            octet3 = str(randrange(1, 256))
+            octet4 = str(randrange(1, 256))
+            network = ".".join([octet1, octet2, octet3, octet4])
         # If there are restritions...
-        if ip:
-            ip_octets = ip.split(".")
-            if 0 <= int(mask) <= 7:
-                octet1 = ip_octets[0]
-                octet2 = ip_octets[1]
-                octet3 = ip_octets[2]
-                octet4 = ip_octets[3]
-            elif 8 <= int(mask) <= 15:
-                octet2 = ip_octets[1]
-                octet3 = ip_octets[2]
-                octet4 = ip_octets[3]
-            elif 16 <= int(mask) <= 23:
-                octet3 = ip_octets[2]
-                octet4 = ip_octets[3]
-            elif 24 <= int(mask) <= 31:
-                octet4 = ip_octets[3]
+        host_octets = host.split(".")
+        net_octets = network.split(".")
+        if 0 <= int(mask) <= 7:
+            octet1 = net_octets[0]
+            octet2 = host_octets[1]
+            octet3 = host_octets[2]
+            octet4 = host_octets[3]
+        elif 8 <= int(mask) <= 15:
+            octet2 = net_octets[1]
+            octet3 = net_octets[2]
+            octet4 = net_octets[3]
+        elif 16 <= int(mask) <= 23:
+            octet3 = net_octets[2]
+            octet4 = net_octets[3]
+        elif 24 <= int(mask) <= 31:
+            octet4 = net_octets[3]
         # Assemble the IP address
         ip = ".".join([octet1,octet2,octet3,octet4])
         if not is_excluded(ip):
@@ -216,7 +221,7 @@ def get_replacement_ip(raw_ip):
             # This succeeds if the network was matched, only need to create an entry for the exact IP
             elif 'net' in mydict['match']:
                 # Create new IP entry, need to use the network portion of the dest_ip and host portion of targ_ip
-                new_ip = ""
+                new_ip = generate_ip(mydict['mask'], targ_ip, mydict['dest_ip'])
                 print "Analysis: Network ONLY Match!\n"
                 # Add the new IP to the include_list
                 newdict = {'src_ip': targ_ip, 'mask': mydict['mask'], 'dest_ip': new_ip}
@@ -231,7 +236,17 @@ def get_replacement_ip(raw_ip):
         else:
             print "Analysis: No IPs Matched: {0}\n".format(targ_ip)
             # Create new IP
-            new_ip = generate_random_ip(mydict['mask'], mydict['dest'])
+            new_ip = generate_ip(targ_mask, targ_ip)
+            # Add new IP to the include_list
+            newdict = {'src_ip': targ_ip, 'mask': targ_mask, 'dest_ip': new_ip}
+            include_list.append(newdict)
+            # If the IP address is a host address, create a network address
+            ip_list = list(IPNetwork(targ_ip + "/" + targ_mask))
+            if ip_list[0] != IPAddress(targ_ip):
+                print "This IP is not a network address. Creating a network address for this IP."
+                new_net = generate_ip(targ_mask, targ_ip, new_ip)
+                newdict = {'src_ip': ip_list[0], 'mask': targ_mask, 'dest_ip': new_net}
+                print "newdict: {0}".format(newdict)
             """
             Targ_IP: 10.106.137.201
             Targ_Mask: 32
