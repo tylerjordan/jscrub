@@ -92,7 +92,7 @@ def scrub_file(input_file):
                                 "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                                 "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                                 "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                                "(\/([8]|[9]|1[0-9]|2[0-9]|3[0-1]))?")
+                                "(\/([8]|[9]|1[0-9]|2[0-9]|3[0-2]))?")
     ipv6_regex = re.compile("(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:)"
                             "{1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:)"
                             "{1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4})"
@@ -103,29 +103,36 @@ def scrub_file(input_file):
                             "{1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9])"
                             "{0,1}[0-9]))")
     regexs = [ipv4_regex, ipv6_regex]
-
+    # Create list of interesting items
+    capture_ld = []
     # Load targeted scrub file into a list
     line_list = txt_to_list(input_file)
     # Check for content using provided regexs
+    print "Starting scan of {0}:".format(input_file)
     if line_list:
         for line in line_list:
-            #print "Beginning Line: {0}\n".format(line)
             for regex in regexs:
-                new_line = ""
                 #print "Start Line: {0}".format(line)
-                # Get the start and end indexes for ipv4 addresses
+                # Get the start and end indexes for captured regex terms
                 indicies = [[m.start(),m.end()] for m in regex.finditer(line)]
                 # Create default start and end indicies
                 frag_start = 0
                 frag_end = len(line)
                 # Loop over indicies
                 for ipindex in indicies:
+                    '''
                     # This adds the line segment before the ip
                     new_line += line[frag_start:ipindex[0]]
                     # This runs the function for finding the correct IP or creating one using provided file content
                     new_line += get_replacement_ip(str(line[ipindex[0]:ipindex[1]]))
+                    '''
+                    ip = str(line[ipindex[0]:ipindex[1]])
+                    print "\tMatched: {0}".format(ip)
+                    # Add interesting term to the list
+                    capture_ld.append(ip)
                     # Update the frag_start to last index
                     frag_start = ipindex[1]
+                '''
                 # Check if we still have some text after the last ip. If no matches were made this simply add the entire
                 # line unchanged
                 if frag_start < frag_end:
@@ -133,6 +140,13 @@ def scrub_file(input_file):
                 # Change line to the "modified" line
                 line = new_line
                 #print "Modified Line: {0}\n".format(line)
+                '''
+        print "Completed scan of {0}".format(input_file)
+    # If it failed to read or convert the file
+    else:
+        print "ERROR: Unable to convert file to list: {0}".format(input_file)
+    # Remove duplicates and return the capture interesting terms
+    return list(set(capture_ld))
 
 # Creates an IP using a network ip/mask or just mask
 # /0 - /7 -> Not defined
@@ -155,19 +169,25 @@ def generate_ip(mask, host, network=None):
         # If there are restritions...
         host_octets = host.split(".")
         net_octets = network.split(".")
-        if 0 <= int(mask) <= 7:
+        if 0 < int(mask) <= 15:
             octet1 = net_octets[0]
             octet2 = host_octets[1]
             octet3 = host_octets[2]
             octet4 = host_octets[3]
-        elif 8 <= int(mask) <= 15:
+        elif 16 <= int(mask) <= 23:
+            octet1 = net_octets[0]
+            octet2 = net_octets[1]
+            octet3 = host_octets[2]
+            octet4 = host_octets[3]
+        elif 24 <= int(mask) <= 31:
+            octet1 = net_octets[0]
             octet2 = net_octets[1]
             octet3 = net_octets[2]
-            octet4 = net_octets[3]
-        elif 16 <= int(mask) <= 23:
+            octet4 = host_octets[3]
+        elif int(mask) == 32:
+            octet1 = net_octets[0]
+            octet2 = net_octets[1]
             octet3 = net_octets[2]
-            octet4 = net_octets[3]
-        elif 24 <= int(mask) <= 31:
             octet4 = net_octets[3]
         # Assemble the IP address
         ip = ".".join([octet1,octet2,octet3,octet4])
@@ -232,21 +252,27 @@ def get_replacement_ip(raw_ip):
             # This executes if the match was not exact, meaning, we need an entry for this IP
             else:
                 print "Analysis: ERROR - Should not execute, this value is invalid: {0}\n".format(mydict['match'])
+                exit()
         # This executes if is_included doesn't return a match, an unmatched entry!
         else:
             print "Analysis: No IPs Matched: {0}\n".format(targ_ip)
             # Create new IP
             new_ip = generate_ip(targ_mask, targ_ip)
+            print "Generated IP: {0}".format(new_ip)
             # Add new IP to the include_list
             newdict = {'src_ip': targ_ip, 'mask': targ_mask, 'dest_ip': new_ip}
             include_list.append(newdict)
             # If the IP address is a host address, create a network address
             ip_list = list(IPNetwork(targ_ip + "/" + targ_mask))
-            if ip_list[0] != IPAddress(targ_ip):
-                print "This IP is not a network address. Creating a network address for this IP."
+            print "Network List: {0}".format(ip_list)
+            if targ_mask != '32' or ip_list[0] != IPAddress(targ_ip):
+                print "This IP is not a network address or 32 mask. Create a network address for this IP..."
                 new_net = generate_ip(targ_mask, targ_ip, new_ip)
                 newdict = {'src_ip': ip_list[0], 'mask': targ_mask, 'dest_ip': new_net}
                 print "newdict: {0}".format(newdict)
+            # Return masked or unmasked depending on calling requirement
+            if masked: return new_ip + "/" + targ_mask
+            else: return new_ip
             """
             Targ_IP: 10.106.137.201
             Targ_Mask: 32
@@ -256,7 +282,11 @@ def get_replacement_ip(raw_ip):
             """
     else:
         print "Analysis: Matched an Excluded IP or Network: {0}\n".format(targ_ip)
-
+        # Return masked or unmasked depending on calling requirement
+        if masked:
+            return targ_ip + "/" + targ_mask
+        else:
+            return targ_ip
 # Modify a term in the defined dictionary within a list of dictionaries
 # The match term/val are to identify the correct dictionary only
 # The chg term/val are the key/value to change in the identified dictionary
@@ -330,6 +360,7 @@ if __name__ == '__main__':
     print "input_file: {0}".format(input_file)
     print "ipmap_file: {0}".format(ipmap_file)
     print "Starting Main Program Loop"
+    capture_ld = []
     try:
         # Run this if the argument is a directory...
         if os.path.isdir(input_file):
@@ -340,7 +371,12 @@ if __name__ == '__main__':
                 # This loads the global include and exclude list dictionaries
                 load_ipmap()
             # Run the scrub function
-            scrub_file(input_file)
+            capture_ld = scrub_file(input_file)
+            # Analyze and update ipmap based on captured info
+            print "Capture Content"
+            capture_ld.sort()
+            pprint(capture_ld)
+            # Iterate over the list
             quit()
     except KeyboardInterrupt:
         print 'Exiting...'
