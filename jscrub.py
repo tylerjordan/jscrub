@@ -22,7 +22,7 @@ from random import randrange
 mypwd = ''
 myuser = ''
 port = 22
-include_list = []
+textmap_list = []
 exclude_list = []
 
 def detect_env():
@@ -49,26 +49,25 @@ def detect_env():
 # This method populates two list dictionaries with the ipmap contents
 def load_ipmap():
     global exclude_list
-    global include_list
+    global textmap_list
     if ipmap_file:
         line_list = txt_to_list(ipmap_file)
         print "IPMAP FILE: {0}".format(ipmap_file)
         # Get include info
-        on_include = False
+        on_textmap = False
         # Loop over ipmap file and create an exclude list and include listdict
         for line in line_list:
             # Check if there is text on this line...
             if line:
                 # Check for "INCLUDE" text...
-                if "INCLUDE" in line:
-                    on_include = True
+                if "TEXT-MAPPING" in line:
+                    on_textmap = True
                 # If we are in INCLUDE section...
-                elif on_include:
-                    src_dest = line.split(",")
-                    src_ip = src_dest[0].split("/")
-                    dest_ip = src_dest[1].split("/")
-                    dest_split = src_dest[1].split("/")
-                    include_list.append({"src_ip": src_ip[0], "dest_ip": dest_ip[0], "mask": dest_split[1]})
+                elif on_textmap:
+                    text_map = line.split(",")
+                    src_text = text_map[0]
+                    dest_text = text_map[1]
+                    textmap_list.append({"src_text": src_text, "dest_text": dest_text})
                 # If we are in EXCLUDE section...
                 else:
                     if not "EXCLUDE" in line:
@@ -78,7 +77,7 @@ def load_ipmap():
     # Print exclude list
     print "Exclude List: {0}".format(exclude_list)
     # Print include list
-    print "Include List: {0}".format(include_list)
+    print "Textmap List: {0}".format(textmap_list)
 
 
 # Function for scrubbing a file
@@ -331,6 +330,29 @@ def is_included(targ_ip):
             mymatch = inc_ip
     return mymatch
 
+# This function removes the excluded IPs from the provided list
+def remove_excluded_ips(ip_list):
+    # Filtered List
+    filtered_ld = []
+    # Loop over the list lines
+    for ip in ip_list:
+        matched = False
+        for exc_ip in exclude_list:
+            if IPNetwork(ip) in IPNetwork(exc_ip):
+                print "Matched List Term: {0} to Exclude Term: {1}".format(ip, exc_ip)
+                matched = True
+                break
+        if not matched:
+            print "-- No Match Found for: {0}".format(ip)
+            if "/" in ip:
+                split_ip = ip.split("/")
+                ip_dict = {'src_ip': split_ip[0], 'mask': split_ip[1], 'dest_ip': ''}
+            else:
+                ip_dict = {'src_ip': ip, 'mask': '32', 'dest_ip': ''}
+            filtered_ld.append(ip_dict)
+    return filtered_ld
+
+
 # START OF SCRIPT #
 if __name__ == '__main__':
     try:
@@ -373,9 +395,10 @@ if __name__ == '__main__':
             # Run the scrub function
             capture_ld = scrub_file(input_file)
             # Analyze and update ipmap based on captured info
-            print "Capture Content"
             capture_ld.sort()
-            pprint(capture_ld)
+            print "Filtered Content"
+            filtered_ld = remove_excluded_ips(capture_ld)
+            pprint(filtered_ld)
             # Iterate over the list
             quit()
     except KeyboardInterrupt:
