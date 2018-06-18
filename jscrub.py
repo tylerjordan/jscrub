@@ -297,17 +297,6 @@ def change_dict(list_dict, match_term, match_val, chg_term, chg_val):
                 mydict.update({chg_term: chg_val})
     return list_dict
 
-# Check for IP in the list
-def is_excluded(ip):
-    # Loop over exclude IPs
-    matched = False
-    for exc_ip in exclude_list:
-        # If a match on the IP is made, this IP will be skipped
-        if IPAddress(ip) in IPNetwork(exc_ip):
-            matched = True
-            #print "MATCHED: {0} with: {1}".format(ip, exc_ip)
-    return matched
-
 # Check included, if false, create new entry , if true, return the dictionary match
 def is_included(targ_ip):
     # Loop over include IPs
@@ -352,6 +341,10 @@ def remove_excluded_ips(ip_list):
             filtered_ld.append(ip_dict)
     return filtered_ld
 
+# This function sorts a list dictionary by a certain key's value, can also reverse the sort order
+def sort_ld_by_val(ld, key, rev=False):
+    newlist = sorted(ld, key=itemgetter(key), reverse=rev)
+    return newlist
 
 # START OF SCRIPT #
 if __name__ == '__main__':
@@ -396,9 +389,13 @@ if __name__ == '__main__':
             capture_ld = scrub_file(input_file)
             # Analyze and update ipmap based on captured info
             capture_ld.sort()
-            print "Filtered Content"
-            filtered_ld = remove_excluded_ips(capture_ld)
-            pprint(filtered_ld)
+            print "#################\n Filtered Content\n#################"
+            f_ld = remove_excluded_ips(capture_ld)
+            pprint(f_ld)
+            print "#################\n Sorted Content\n#################"
+            pprint(sort_ld_by_val(f_ld, 'mask'))
+            #f_ld.sort(key=lambda x: (x['src_ip'], x['mask']))
+            #pprint(f_ld)
             # Iterate over the list
             quit()
     except KeyboardInterrupt:
