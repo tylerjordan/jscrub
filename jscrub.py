@@ -230,7 +230,6 @@ def remove_excluded_ips(ip_list):
             if IPNetwork(ip) in IPNetwork(exc_ip):
                 print "Matched List Term: {0} to Exclude Term: {1}".format(ip, exc_ip)
                 matched = True
-                break
         if not matched:
             print "-- No Match Found for: {0}".format(ip)
             if "/" in ip:
@@ -278,7 +277,7 @@ def load_ipmap():
 # 1. Find all ipv4 terms in a line of text
 # 2. Search for existing replacements, if they don't exist, create new ones
 # 3. Create substrings of the remaining text
-def extract_ips(input_file):
+def extract_file_ips(input_file):
     # Regexs
     ipv4_regex = re.compile("([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                                 "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
@@ -343,10 +342,11 @@ def extract_ips(input_file):
 # This function sorts a list dictionary by a certain key's value, can also reverse the sort order
 def process_capture_list(capture_list):
     ld = []
+    new_ld = []
     # Remove the "excluded" ips first
     removed_list = remove_excluded_ips(capture_list)
 
-    # Covert list to list of dictionaries
+    # Convert list to list of dictionaries
     for raw_ip in removed_list:
         if "/" in raw_ip:
             exp_ip = raw_ip.split("/")
@@ -355,9 +355,20 @@ def process_capture_list(capture_list):
             mydict = {'ip': raw_ip, 'mask': '32'}
         ld.append(mydict)
 
-    # Sort the ld by mask
-    newlist = sorted(ld, key=itemgetter('mask'), reverse=False)
-    return newlist
+    # Sort by mask
+    ld = sorted(ld, key=itemgetter('mask'), reverse=False)
+
+    ip_list = []
+    # Remove duplicate ips
+    for mydict in ld:
+        if mydict['ip'] not in ip_list:
+            new_ld.append(mydict)
+            ip_list.append(mydict['ip'])
+        else:
+            print "Found duplicate ip: {0} mask: {1} !!!".format(mydict['ip'], mydict['mask'])
+
+    # Return
+    return new_ld
 
 # START OF SCRIPT #
 if __name__ == '__main__':
@@ -398,11 +409,13 @@ if __name__ == '__main__':
             if ipmap_file and input_file:
                 # Load the exclude list dictionary
                 load_ipmap()
-                # Extract the IPs from the target files
-                capture_list = extract_ips(input_file)
+                # Load the input file
+                capture_list = extract_file_ips(input_file)
+
                 # Process the list (remove excluded IPs, sort)
-                print "#################\n Filtered/Sorted Content\n#################"
+                print "Start File Processing..."
                 fs_ld = process_capture_list(capture_list)
+                print "Ending File Processing"
                 pprint(fs_ld)
 
                 # Populated List Dictionary
