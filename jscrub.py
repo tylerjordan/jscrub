@@ -46,73 +46,10 @@ def detect_env():
     template_file = os.path.join(dir_path, template_dir, "Template.conf")
     """
 
-# Provide a mask as a string and get the number of network octets
-def get_net_octets(mask):
-    net_octets = 0
-    if 0 < int(mask) <= 15:
-        net_octets = 1
-    elif 16 <= int(mask) <= 23:
-        net_octets = 2
-    elif 24 <= int(mask) <= 31:
-        net_octets = 3
-    elif int(mask) == 32:
-        net_octets = 4
 
-    return net_octets
 
-# Creates an IP using a network ip/mask or just mask
-# /0 - /7 -> Not defined
-# /8 - /15 -> Randomize 1st octet, keep last 3
-# /16 - /23 -> Randomize first 2 octets, keep last 2
-# /24 - /31 -> Randomize first 3 octets, keep last 1
-# /32 -> Randomize all octets
-#
-# If a network is provided, the network portion of the IP address will be used.
-# If a network is not provided, the network will be randomly generated.
-def generate_ip(pop_dest_ip, pop_dest_mask, fs_ip, fs_mask):
-    not_valid = True
-    net_octets = 0
-    new_ip = ''
-    pop_net = get_net_octets(pop_dest_mask)
-    fs_net = get_net_octets(fs_mask)
-    pop_octets = pop_dest_ip.split(".")
-    fs_octets = fs_ip.split(".")
-    octets = {'octet0': '0', 'octet1': '0', 'octet2': '0', 'octet3': '0'}
-    # Perform this loop until we have a valid / non-duplicate IP address
-    while not_valid:
-        if pop_net == 3:
-            octets['octet0'] == pop_octets[0]
-            octets['octet1'] == pop_octets[1]
-            octets['octet2'] == pop_octets[2]
-            if fs_net == 4:
-                octets['octet3'] == fs_octets[3]
-        elif pop_net == 2:
-            octets['octet0'] == pop_octets[0]
-            octets['octet1'] == pop_octets[1]
-            if fs_net == 3:
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == fs_octets[3]
-            elif fs_net == 4:
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == str(randrange(1, 256))
-        elif pop_net == 1:
-            octets['octet0'] == pop_octets[0]
-            if fs_net == 2:
-                octets['octet1'] == str(randrange(1, 256))
-                octets['octet2'] == fs_octets[2]
-                octets['octet3'] == fs_octets[3]
-            elif fs_net == 3:
-                octets['octet1'] == str(randrange(1, 256))
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == fs_octets[3]
-            elif fs_net == 4:
-                octets['octet1'] == str(randrange(1, 256))
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == str(randrange(1, 256))
-        new_ip = ".".join([octets['octet0'], ['octet2'], ['octet3'], ['octet4']])
-        #if not is_excluded(ip):
-        not_valid = False
-    return new_ip
+
+
 
 # Creates an IP
 def get_replacement_ip(raw_ip):
@@ -217,7 +154,7 @@ def change_dict(list_dict, match_term, match_val, chg_term, chg_val):
                 mydict.update({chg_term: chg_val})
     return list_dict
 
-# This function removes the excluded IPs and returns a list of IPs
+# This function removes any of the excluded IPs and returns a list of IPs
 def remove_excluded_ips(ip_list):
     # Filtered List
     filtered_list = []
@@ -230,12 +167,10 @@ def remove_excluded_ips(ip_list):
             if IPNetwork(ip) in IPNetwork(exc_ip):
                 print "Matched List Term: {0} to Exclude Term: {1}".format(ip, exc_ip)
                 matched = True
+        # If the IP was not matched, add it to the filtered list
         if not matched:
-            print "-- No Match Found for: {0}".format(ip)
-            if "/" in ip:
-                filtered_list.append(ip)
-            else:
-                filtered_list.append(ip + "/32")
+            filtered_list.append(ip)
+
     return filtered_list
 
 # This method populates two list dictionaries with the ipmap contents
@@ -295,7 +230,7 @@ def extract_file_ips(input_file):
                             "{0,1}[0-9]))")
     regexs = [ipv4_regex, ipv6_regex]
     # Create list of interesting items
-    capture_ld = []
+    capture_list = []
     # Load targeted scrub file into a list
     line_list = txt_to_list(input_file)
     # Check for content using provided regexs
@@ -311,33 +246,21 @@ def extract_file_ips(input_file):
                 frag_end = len(line)
                 # Loop over indicies
                 for ipindex in indicies:
-                    '''
-                    # This adds the line segment before the ip
-                    new_line += line[frag_start:ipindex[0]]
-                    # This runs the function for finding the correct IP or creating one using provided file content
-                    new_line += get_replacement_ip(str(line[ipindex[0]:ipindex[1]]))
-                    '''
                     ip = str(line[ipindex[0]:ipindex[1]])
-                    print "\tMatched: {0}".format(ip)
-                    # Add interesting term to the list
-                    capture_ld.append(ip)
+                    #print "\tMatched: {0}".format(ip)
+                    # Add a "/32" suffix if IP does not have a mask and add to list
+                    if "/" in ip:
+                        capture_list.append(ip)
+                    else:
+                        capture_list.append(ip + "/32")
                     # Update the frag_start to last index
                     frag_start = ipindex[1]
-                '''
-                # Check if we still have some text after the last ip. If no matches were made this simply add the entire
-                # line unchanged
-                if frag_start < frag_end:
-                    new_line += line[frag_start:frag_end]
-                # Change line to the "modified" line
-                line = new_line
-                #print "Modified Line: {0}\n".format(line)
-                '''
         print "Completed scan of {0}".format(input_file)
     # If it failed to read or convert the file
     else:
         print "ERROR: Unable to convert file to list: {0}".format(input_file)
     # Remove duplicates and return the capture interesting terms
-    return list(set(capture_ld))
+    return list(set(capture_list))
 
 # This function sorts a list dictionary by a certain key's value, can also reverse the sort order
 def process_capture_list(capture_list):
@@ -369,6 +292,93 @@ def process_capture_list(capture_list):
 
     # Return
     return new_ld
+
+# Provide a mask as a string and get the number of network octets
+# Creates an IP using a network ip/mask or just mask
+# /0 - /7 -> Not defined
+# /8 - /15 -> Randomize 1st octet, keep last 3
+# /16 - /23 -> Randomize first 2 octets, keep last 2
+# /24 - /31 -> Randomize first 3 octets, keep last 1
+# /32 -> Randomize all octets
+#
+def get_net_octets(mask):
+    net_octets = 0
+    if 0 < int(mask) <= 15:
+        net_octets = 1
+    elif 16 <= int(mask) <= 23:
+        net_octets = 2
+    elif 24 <= int(mask) <= 31:
+        net_octets = 3
+    elif int(mask) == 32:
+        net_octets = 4
+
+    return net_octets
+
+# If a network is provided, the network portion of the IP address will be used.
+# LS_IP: Low side IP, from map database
+# LS_MASK: Low side mask, from map database
+# HS_IP: High side IP, captured IP
+# HS_MASK: High side mask, captured MASK
+# MAP_LD: The map database
+def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
+    not_valid = True
+    new_ip = ''
+    ls_net = get_net_octets(ls_mask)
+    hs_net = get_net_octets(hs_mask)
+    ls_octets = ls_ip.split(".")
+    hs_octets = hs_ip.split(".")
+    octets = {'octet0': '0', 'octet1': '0', 'octet2': '0', 'octet3': '0'}
+    # Perform this loop until we have a valid / non-duplicate IP address
+    while not_valid:
+        # The following IF/ELSE use
+        if ls_net == 3:
+            octets['octet0'] == ls_octets[0]
+            octets['octet1'] == ls_octets[1]
+            octets['octet2'] == ls_octets[2]
+            if hs_net == 4:
+                octets['octet3'] == hs_octets[3]
+        elif ls_net == 2:
+            octets['octet0'] == ls_octets[0]
+            octets['octet1'] == ls_octets[1]
+            if hs_net == 3:
+                octets['octet2'] == str(randrange(1, 256))
+                octets['octet3'] == hs_octets[3]
+            elif hs_net == 4:
+                octets['octet2'] == str(randrange(1, 256))
+                octets['octet3'] == str(randrange(1, 256))
+        elif ls_net == 1:
+            octets['octet0'] == ls_octets[0]
+            if hs_net == 2:
+                octets['octet1'] == str(randrange(1, 256))
+                octets['octet2'] == hs_octets[2]
+                octets['octet3'] == hs_octets[3]
+            elif hs_net == 3:
+                octets['octet1'] == str(randrange(1, 256))
+                octets['octet2'] == str(randrange(1, 256))
+                octets['octet3'] == hs_octets[3]
+            elif hs_net == 4:
+                octets['octet1'] == str(randrange(1, 256))
+                octets['octet2'] == str(randrange(1, 256))
+                octets['octet3'] == str(randrange(1, 256))
+        # Completely random address
+        elif ls_net == 0:
+            octets['octet0'] == str(randrange(1, 256))
+            octets['octet1'] == str(randrange(1, 256))
+            octets['octet2'] == str(randrange(1, 256))
+            octets['octet3'] == str(randrange(1, 256))
+        new_ip = ".".join([octets['octet0'], ['octet2'], ['octet3'], ['octet4']])
+        # Make sure the IP is not an excluded IP or a existing map substitution
+        not_valid = False
+        if map_ld:
+            for map_ip in map_ld:
+                if new_ip == map_ip['ip']:
+                    print "Duplicate IP created, {0} trying again...".format(new_ip)
+                    not_valid = True
+            for exc_ip in exclude_list:
+                if new_ip == exc_ip:
+                    print "Created excluded IP, {0} trying again...".format(new_ip)
+                    not_valid = True
+    return new_ip
 
 # START OF SCRIPT #
 if __name__ == '__main__':
@@ -410,39 +420,57 @@ if __name__ == '__main__':
                 # Load the exclude list dictionary
                 load_ipmap()
                 # Load the input file
+                print "<- Start Extract Process ->"
                 capture_list = extract_file_ips(input_file)
+                print "<- Ending Extract Process ->"
 
                 # Process the list (remove excluded IPs, sort)
-                print "Start File Processing..."
-                fs_ld = process_capture_list(capture_list)
-                print "Ending File Processing"
-                pprint(fs_ld)
+                print "<- Start File Process ->"
+                capture_ld = process_capture_list(capture_list)
+                print "<- Ending File Process ->"
+                pprint(capture_ld)
 
                 # Populated List Dictionary
-                pop_ld = []
+                map_ld = []
                 # Loop over the content from file
                 matched = False
-                fs_ip_mask = ''
-                pop_ip_mask = ''
-                pop_ip_dict = {'dest_ip': '', 'mask': '', 'src_ip': ''}
-                for fs_ip in fs_ld:
-                    if pop_ld:
+                # Loop over the high side list dictionary
+                for cap_ip in capture_ld:
+                    # Execute this if we have entries in the map_ld
+                    if map_ld:
                         # Loop over the populated map list dictionary
-                        for pop_ip in pop_ld:
-                            fs_ip_mask = fs_ip['ip'] + "/" + fs_ip['mask']
-                            pop_ip_mask = pop_ip['src_ip'] + "/" + pop_ip['mask']
-                            # See if the ipmap table has a matching IP
-                            if IPNetwork(fs_ip_mask) in IPNetwork(pop_ip_mask):
+                        map_d = {}
+                        for map_ips in map_ld:
+                            hs_ip_mask = map_ips['hs_ip'] + "/" + map_ips['mask']
+                            cap_ip_mask = cap_ip['ip'] + "/" + cap_ip['mask']
+                            # Compare high side IPs from the map_ld and capture_ld
+                            if IPNetwork(cap_ip_mask) in IPNetwork(hs_ip_mask):
                                 matched = True
-                                print "Matched {0} is a part of [1}".format(fs_ip_mask, pop_ip_mask)
-                                pop_ip_dict = pop_ip
-                        # Run this if a match was made
+                                print "Matched: {0} is a subnet of [1}".format(cap_ip_mask, hs_ip_mask)
+                                map_d = {'ls_ip': map_ips['hs_ip'], 'ls_mask': map_ips['mask'], 'cap_ip': cap_ip['ip'],
+                                         'cap_mask': cap_ip['mask']}
+                        # Run this if a match was made...
                         if matched:
-                            print "-> Closest match to {0} is {1}".format(fs_ip_mask, pop_ip_mask)
-                            new_ip = get_replacement_ip(pop_ip['dest_ip'], pop_ip['mask'], fs_ip['ip'], fs_ip['mask'])
-                            print "-> Replacement IP is {0}".format(new_ip)
-
-
+                            print "-> Closest Match: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
+                            new_ip = generate_ip(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'], map_d['cap_mask'])
+                            print "-> Mapping is: HS_IP: {0} Mask: {1} lS_IP: {2}".format(cap_ip['ip'],
+                                                                                          cap_ip['mask'], new_ip)
+                        # Run this if no match was found. Create an IP and add it to the map_ld
+                        else:
+                            print "-> No match found"
+                            new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+                            print "-> Mapping is: HS_IP: {0} Mask: {1} lS_IP: {2}".format(cap_ip['ip'],
+                                                                                          cap_ip['mask'], new_ip)
+                            map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+                            map_ld.append(map_dict)
+                    # If there are no entries in map_ld, create a new entry
+                    else:
+                        print "-> No entries in map database"
+                        new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+                        print "-> Mapping is: HS_IP: {0} Mask: {1} lS_IP: {2}".format(cap_ip['ip'],
+                                                                                      cap_ip['mask'], new_ip)
+                        map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+                        map_ld.append(map_dict)
                 #f_ld.sort(key=lambda x: (x['src_ip'], x['mask']))
                 #pprint(f_ld)
                 # Iterate over the list
