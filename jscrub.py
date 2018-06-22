@@ -321,52 +321,77 @@ def get_net_octets(mask):
 # HS_MASK: High side mask, captured MASK
 # MAP_LD: The map database
 def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
+    print "ls_ip: {0}".format(ls_ip)
+    print "ls_mask: {0}".format(ls_mask)
+    print "hs_ip: {0}".format(hs_ip)
+    print "hs_mask: {0}".format(hs_mask)
     not_valid = True
     new_ip = ''
     ls_net = get_net_octets(ls_mask)
-    hs_net = get_net_octets(hs_mask)
     ls_octets = ls_ip.split(".")
-    hs_octets = hs_ip.split(".")
-    octets = {'octet0': '0', 'octet1': '0', 'octet2': '0', 'octet3': '0'}
+    print "LS OCTETS: {0}".format(ls_octets)
+    if hs_ip:
+        hs_net = get_net_octets(hs_mask)
+        hs_octets = hs_ip.split(".")
+    octets = ['0', '0', '0', '0']
     # Perform this loop until we have a valid / non-duplicate IP address
     while not_valid:
         # The following IF/ELSE use
-        if ls_net == 3:
-            octets['octet0'] == ls_octets[0]
-            octets['octet1'] == ls_octets[1]
-            octets['octet2'] == ls_octets[2]
-            if hs_net == 4:
-                octets['octet3'] == hs_octets[3]
-        elif ls_net == 2:
-            octets['octet0'] == ls_octets[0]
-            octets['octet1'] == ls_octets[1]
-            if hs_net == 3:
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == hs_octets[3]
-            elif hs_net == 4:
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == str(randrange(1, 256))
-        elif ls_net == 1:
-            octets['octet0'] == ls_octets[0]
-            if hs_net == 2:
-                octets['octet1'] == str(randrange(1, 256))
-                octets['octet2'] == hs_octets[2]
-                octets['octet3'] == hs_octets[3]
-            elif hs_net == 3:
-                octets['octet1'] == str(randrange(1, 256))
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == hs_octets[3]
-            elif hs_net == 4:
-                octets['octet1'] == str(randrange(1, 256))
-                octets['octet2'] == str(randrange(1, 256))
-                octets['octet3'] == str(randrange(1, 256))
-        # Completely random address
-        elif ls_net == 0:
-            octets['octet0'] == str(randrange(1, 256))
-            octets['octet1'] == str(randrange(1, 256))
-            octets['octet2'] == str(randrange(1, 256))
-            octets['octet3'] == str(randrange(1, 256))
-        new_ip = ".".join([octets['octet0'], ['octet2'], ['octet3'], ['octet4']])
+        if hs_ip:
+            if ls_net == 3:
+                octets[0] = ls_octets[0]
+                octets[1] = ls_octets[1]
+                octets[2] = ls_octets[2]
+                if hs_net == 4:
+                    octets[3] = hs_octets[3]
+            elif ls_net == 2:
+                octets[0] = ls_octets[0]
+                octets[1] = ls_octets[1]
+                if hs_net == 3:
+                    octets[2] = str(randrange(1, 254))
+                    octets[3] = hs_octets[3]
+                elif hs_net == 4:
+                    octets[2] = str(randrange(1, 254))
+                    octets[3] = str(randrange(1, 254))
+            elif ls_net == 1:
+                octets[0] = ls_octets[0]
+                if hs_net == 2:
+                    octets[1] = str(randrange(1, 254))
+                    octets[2] = hs_octets[2]
+                    octets[3] = hs_octets[3]
+                elif hs_net == 3:
+                    octets[1] = str(randrange(1, 254))
+                    octets[2] = str(randrange(1, 254))
+                    octets[3] = hs_octets[3]
+                elif hs_net == 4:
+                    octets[1] = str(randrange(1, 254))
+                    octets[2] = str(randrange(1, 254))
+                    octets[3] = str(randrange(1, 254))
+            # Completely random address
+            elif ls_net == 0:
+                octets[0] = str(randrange(1, 254))
+                octets[1] = str(randrange(1, 254))
+                octets[2] = str(randrange(1, 254))
+                octets[3] = str(randrange(1, 254))
+        # Execute this if no partial match is made
+        else:
+            if ls_net == 3:
+                octets[0] = str(randrange(1, 254))
+                octets[1] = str(randrange(1, 254))
+                octets[2] = str(randrange(1, 254))
+                octets[3] = ls_octets[3]
+            elif ls_net == 2:
+                octets[0] = str(randrange(1, 254))
+                octets[1] = str(randrange(1, 254))
+                octets[2] = ls_octets[2]
+                octets[3] = ls_octets[3]
+            elif ls_net == 1:
+                octets[0] = str(randrange(1, 254))
+                octets[1] = ls_octets[2]
+                octets[2] = ls_octets[2]
+                octets[3] = ls_octets[3]
+        # Combine the octets
+        new_ip = ".".join(octets)
         # Make sure the IP is not an excluded IP or a existing map substitution
         not_valid = False
         if map_ld:
@@ -453,13 +478,13 @@ if __name__ == '__main__':
                         if matched:
                             print "-> Closest Match: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
                             new_ip = generate_ip(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'], map_d['cap_mask'])
-                            print "-> Mapping is: HS_IP: {0} Mask: {1} lS_IP: {2}".format(cap_ip['ip'],
+                            print "-> Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
                                                                                           cap_ip['mask'], new_ip)
                         # Run this if no match was found. Create an IP and add it to the map_ld
                         else:
                             print "-> No match found"
                             new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-                            print "-> Mapping is: HS_IP: {0} Mask: {1} lS_IP: {2}".format(cap_ip['ip'],
+                            print "-> Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
                                                                                           cap_ip['mask'], new_ip)
                             map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
                             map_ld.append(map_dict)
@@ -467,7 +492,7 @@ if __name__ == '__main__':
                     else:
                         print "-> No entries in map database"
                         new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-                        print "-> Mapping is: HS_IP: {0} Mask: {1} lS_IP: {2}".format(cap_ip['ip'],
+                        print "-> Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
                                                                                       cap_ip['mask'], new_ip)
                         map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
                         map_ld.append(map_dict)
