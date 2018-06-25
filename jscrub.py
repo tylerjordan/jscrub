@@ -375,7 +375,7 @@ def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
                 octets[3] = str(randrange(1, 254))
         # Execute this if no partial match is made
         else:
-            if ls_net == 3:
+            if ls_net == 3 or ls_net == 4:
                 octets[0] = str(randrange(1, 254))
                 octets[1] = str(randrange(1, 254))
                 octets[2] = str(randrange(1, 254))
@@ -392,11 +392,14 @@ def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
                 octets[3] = ls_octets[3]
         # Combine the octets
         new_ip = ".".join(octets)
+        print "NEW IP: {0}".format(new_ip)
         # Make sure the IP is not an excluded IP or a existing map substitution
         not_valid = False
         if map_ld:
+            print "MAP_LD:"
+            pprint(map_ld)
             for map_ip in map_ld:
-                if new_ip == map_ip['ip']:
+                if new_ip == map_ip['ls_ip']:
                     print "Duplicate IP created, {0} trying again...".format(new_ip)
                     not_valid = True
             for exc_ip in exclude_list:
@@ -457,10 +460,12 @@ if __name__ == '__main__':
 
                 # Populated List Dictionary
                 map_ld = []
-                # Loop over the content from file
-                matched = False
                 # Loop over the high side list dictionary
                 for cap_ip in capture_ld:
+                    # Loop over the content from file
+                    matched = False
+                    stars = "*"*30
+                    print "\n {1} {0} [START] {1}".format(cap_ip['ip'], stars)
                     # Execute this if we have entries in the map_ld
                     if map_ld:
                         # Loop over the populated map list dictionary
@@ -471,31 +476,34 @@ if __name__ == '__main__':
                             # Compare high side IPs from the map_ld and capture_ld
                             if IPNetwork(cap_ip_mask) in IPNetwork(hs_ip_mask):
                                 matched = True
-                                print "Matched: {0} is a subnet of [1}".format(cap_ip_mask, hs_ip_mask)
+                                print "Matched: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
                                 map_d = {'ls_ip': map_ips['hs_ip'], 'ls_mask': map_ips['mask'], 'cap_ip': cap_ip['ip'],
                                          'cap_mask': cap_ip['mask']}
                         # Run this if a match was made...
                         if matched:
+                            hs_ip_mask = map_d['cap_ip'] + "/" + map_d['cap_mask']
+                            cap_ip_mask = map_d['ls_ip'] + "/" + map_d['ls_mask']
                             print "-> Closest Match: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
                             new_ip = generate_ip(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'], map_d['cap_mask'])
-                            print "-> Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
-                                                                                          cap_ip['mask'], new_ip)
+                            print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(map_d['cap_ip'],
+                                                                                          map_d['cap_mask'], new_ip)
                         # Run this if no match was found. Create an IP and add it to the map_ld
                         else:
                             print "-> No match found"
-                            new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-                            print "-> Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
-                                                                                          cap_ip['mask'], new_ip)
-                            map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+                            new_ip = generate_ip(map_d['ls_ip'], map_d['ls_mask'], map_ld=map_ld)
+                            print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(map_d['cap_ip'],
+                                                                                          map_d['cap_mask'], new_ip)
+                            map_dict = {'ls_ip': new_ip, 'mask': map_d['cap_mask'], 'hs_ip': map_d['cap_ip']}
                             map_ld.append(map_dict)
                     # If there are no entries in map_ld, create a new entry
                     else:
                         print "-> No entries in map database"
                         new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-                        print "-> Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
+                        print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
                                                                                       cap_ip['mask'], new_ip)
                         map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
                         map_ld.append(map_dict)
+                    print "{1} {0} [END] {1}\n".format(cap_ip['ip'], stars)
                 #f_ld.sort(key=lambda x: (x['src_ip'], x['mask']))
                 #pprint(f_ld)
                 # Iterate over the list
