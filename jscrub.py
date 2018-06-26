@@ -262,23 +262,8 @@ def extract_file_ips(input_file):
     # Remove duplicates and return the capture interesting terms
     return list(set(capture_list))
 
+# This function replaces the IPs in the input_file using the map_ld
 def replace_ips(input_file, map_ld):
-    # Regexs
-    ipv4_regex = re.compile("([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                                "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                                "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                                "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                                "(\/([8]|[9]|1[0-9]|2[0-9]|3[0-2]))?")
-    ipv6_regex = re.compile("(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:)"
-                            "{1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:)"
-                            "{1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4})"
-                            "{1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:"
-                            "((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4})"
-                            "{0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9])"
-                            "{0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:)"
-                            "{1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9])"
-                            "{0,1}[0-9]))")
-    regexs = [ipv4_regex, ipv6_regex]
     # Create list of interesting items
     capture_list = []
     # Load targeted scrub file into a list
@@ -290,41 +275,26 @@ def replace_ips(input_file, map_ld):
         for line in line_list:
             new_line = ''
             print "Old Line: {0}".format(line)
+            not_matched = True
+            # Loop over the replacement list dictionary
             for map_d in map_ld:
                 if map_d['hs_ip'] in line:
                     new_line = re.sub(map_d['hs_ip'], map_d['ls_ip'], line)
                     print "\tReplacing: {0} with {1}".format(map_d['hs_ip'], map_d['ls_ip'])
+                    not_matched = False
                     line = new_line
+            # If there were no IPs or replacments in the file, this will execute
+            if not_matched:
+                new_line = line
             print "New Line: {0}".format(new_line)
-            '''
-            for regex in regexs:
-                #print "Start Line: {0}".format(line)
-                # Get the start and end indexes for captured regex terms
-                indicies = [[m.start(),m.end()] for m in regex.finditer(line)]
-                # Create default start and end indicies
-                frag_start = 0
-                frag_end = len(line)
-                print "Line: {0}".format(line)
-                # Loop over indicies
-                for ipindex in indicies:
-                    ip = str(line[ipindex[0]:ipindex[1]])
-                    # Loop over map file
-                    for map_d in map_ld:
-                        if map_d['hs_ip'] in ip:
-                            print "\tCurrent IP: {0} -> Map IP: {1} -> New IP: {2}".format(ip, map_d['hs_ip'],
-                                                                                           map_d['ls_ip'])
-                            capture_list.append(map_d['ls_ip'])
-                            break
-                    # Update the frag_start to last index
-                    frag_start = ipindex[1]
-            '''
+            # Add replaced line to list
+            capture_list.append(new_line)
         print "Completed scan of {0}".format(input_file)
     # If it failed to read or convert the file
     else:
         print "ERROR: Unable to convert file to list: {0}".format(input_file)
-    # Remove duplicates and return the capture interesting terms
-    return list(set(capture_list))
-
+    # Return the capture interesting terms
+    return capture_list
 
 # This function sorts a list dictionary by a certain key's value, can also reverse the sort order
 def process_capture_list(capture_list):
@@ -472,6 +442,62 @@ def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
                     not_valid = True
     return new_ip
 
+# Populates the file using the map file
+def populate_ld(capture_ld):
+    # Populated List Dictionary
+    map_ld = []
+    # Loop over the high side list dictionary
+    for cap_ip in capture_ld:
+        # Loop over the content from file
+        matched = False
+        stars = "*" * 30
+        print "\n{1} {0} [START] {1}".format(cap_ip['ip'], stars)
+        # Execute this if we have entries in the map_ld
+        if map_ld:
+            map_d = {}
+            # Loop over the populated map list dictionary
+            for map_ips in map_ld:
+                hs_ip_mask = map_ips['hs_ip'] + "/" + map_ips['mask']
+                cap_ip_mask = cap_ip['ip'] + "/" + cap_ip['mask']
+                # Compare high side IPs from the map_ld and capture_ld
+                if IPNetwork(cap_ip_mask) in IPNetwork(hs_ip_mask):
+                    matched = True
+                    print "Matched: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
+                    map_d = {'ls_ip': map_ips['ls_ip'], 'ls_mask': map_ips['mask'], 'cap_ip': cap_ip['ip'],
+                             'cap_mask': cap_ip['mask']}
+            # Run this if a match was made...
+            if matched:
+                ls_ip_mask = map_d['ls_ip'] + "/" + map_d['ls_mask']
+                cap_ip_mask = map_d['cap_ip'] + "/" + map_d['cap_mask']
+                print "-> Using Low-side Address: {0}".format(ls_ip_mask)
+                new_ip = generate_ip(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'],
+                                     map_d['cap_mask'])
+                print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(map_d['cap_ip'],
+                                                                                  map_d['cap_mask'], new_ip)
+                map_dict = {'ls_ip': new_ip, 'mask': map_d['cap_mask'], 'hs_ip': map_d['cap_ip']}
+                map_ld.append(map_dict)
+                # quit()
+            # Run this if no match was found. Create an IP and add it to the map_ld
+            else:
+                print "-> No match found"
+                new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+                print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
+                                                                                  cap_ip['mask'], new_ip)
+                map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+                map_ld.append(map_dict)
+        # If there are no entries in map_ld, create a new entry
+        else:
+            print "-> No entries in map database"
+            new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+            print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'], cap_ip['mask'],
+                                                                              new_ip)
+            map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+            map_ld.append(map_dict)
+        print "{1} {0} [END] {1}\n".format(cap_ip['ip'], stars)
+
+    return map_ld
+
+
 # START OF SCRIPT #
 if __name__ == '__main__':
     try:
@@ -522,60 +548,22 @@ if __name__ == '__main__':
                 print "<- Ending File Process ->"
                 pprint(capture_ld)
 
-                # Populated List Dictionary
-                map_ld = []
-                # Loop over the high side list dictionary
-                for cap_ip in capture_ld:
-                    # Loop over the content from file
-                    matched = False
-                    stars = "*"*30
-                    print "\n{1} {0} [START] {1}".format(cap_ip['ip'], stars)
-                    # Execute this if we have entries in the map_ld
-                    if map_ld:
-                        map_d = {}
-                        # Loop over the populated map list dictionary
-                        for map_ips in map_ld:
-                            hs_ip_mask = map_ips['hs_ip'] + "/" + map_ips['mask']
-                            cap_ip_mask = cap_ip['ip'] + "/" + cap_ip['mask']
-                            # Compare high side IPs from the map_ld and capture_ld
-                            if IPNetwork(cap_ip_mask) in IPNetwork(hs_ip_mask):
-                                matched = True
-                                print "Matched: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
-                                map_d = {'ls_ip': map_ips['ls_ip'], 'ls_mask': map_ips['mask'], 'cap_ip': cap_ip['ip'],
-                                         'cap_mask': cap_ip['mask']}
-                        # Run this if a match was made...
-                        if matched:
-                            ls_ip_mask = map_d['ls_ip'] + "/" + map_d['ls_mask']
-                            cap_ip_mask = map_d['cap_ip'] + "/" + map_d['cap_mask']
-                            print "-> Using Low-side Address: {0}".format(ls_ip_mask)
-                            new_ip = generate_ip(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'],
-                                                 map_d['cap_mask'])
-                            print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(map_d['cap_ip'],
-                                                                                              map_d['cap_mask'], new_ip)
-                            map_dict = {'ls_ip': new_ip, 'mask': map_d['cap_mask'], 'hs_ip': map_d['cap_ip']}
-                            map_ld.append(map_dict)
-                            #quit()
-                        # Run this if no match was found. Create an IP and add it to the map_ld
-                        else:
-                            print "-> No match found"
-                            new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-                            print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
-                                                                                              cap_ip['mask'], new_ip)
-                            map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
-                            map_ld.append(map_dict)
-                    # If there are no entries in map_ld, create a new entry
-                    else:
-                        print "-> No entries in map database"
-                        new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-                        print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'], cap_ip['mask'],
-                                                                                          new_ip)
-                        map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
-                        map_ld.append(map_dict)
-                    print "{1} {0} [END] {1}\n".format(cap_ip['ip'], stars)
-                #f_ld.sort(key=lambda x: (x['src_ip'], x['mask']))
-                #pprint(f_ld)
-                # Iterate over the list
-                replace_ips(input_file, map_ld)
+                # Create Map List Dictionary
+                print "<- Start Populate Process ->"
+                map_ld = populate_ld(capture_ld)
+                print "<- Ending Populate Process ->"
+
+                # Perform Replacement Function
+                print "<- Start Replacement Process ->"
+                replaced_list = replace_ips(input_file, map_ld)
+                print "<- Ending Replacement Process ->"
+
+                # Create File From Results List
+                myfile = "replace.txt"
+                if list_to_txt(myfile, replaced_list):
+                    print "<- File: {0} Sucessfully created text file!".format(myfile)
+                else:
+                    print "<- File: {0} Conversion to text file failed!".format(myfile)
             # Run this if the ipmap_file or input_file is not valid
             else:
                 print "Please check the input files!"
