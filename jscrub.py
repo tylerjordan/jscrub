@@ -7,6 +7,7 @@ import platform
 import os, sys
 import netaddr
 import argparse
+import ntpath
 
 from utility import *
 
@@ -25,31 +26,31 @@ port = 22
 textmap_list = []
 exclude_list = []
 
+# More Globals
+search_dir = ''
+scrub_dir = ''
+
 def detect_env():
     """ Purpose: Detect OS and create appropriate path variables
     :param: None
     :return: None
     """
-    """
-    global iplist_dir
+    global search_dir
+    global scrub_dir
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     if platform.system().lower() == "windows":
         print "Environment Windows!"
-        iplist_dir = os.path.join(dir_path, "data\\iplists")
+        search_dir = os.path.join(dir_path, "search_folder")
+        scrub_dir = os.path.join(dir_path, "scrubbed_files")
 
     else:
         print "Environment Linux/MAC!"
-        iplist_dir = os.path.join(dir_path, "data/iplists")
+        search_dir = os.path.join(dir_path, "search_folder")
+        scrub_dir = os.path.join(dir_path, "scrubbed_files")
 
     # Statically defined files and logs
-    template_file = os.path.join(dir_path, template_dir, "Template.conf")
-    """
-
-
-
-
-
+    #template_file = os.path.join(dir_path, template_dir, "Template.conf")
 
 # Creates an IP
 def get_replacement_ip(raw_ip):
@@ -207,12 +208,8 @@ def load_ipmap():
     print "Textmap List: {0}".format(textmap_list)
 
 
-# Function for scrubbing a file
-# How this scrub function works:
-# 1. Find all ipv4 terms in a line of text
-# 2. Search for existing replacements, if they don't exist, create new ones
-# 3. Create substrings of the remaining text
-def extract_file_ips(input_file):
+# Function for extracting the IPs from the input files
+def extract_file_ips(input_files):
     # Regexs
     ipv4_regex = re.compile("([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                                 "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
@@ -231,39 +228,40 @@ def extract_file_ips(input_file):
     regexs = [ipv4_regex, ipv6_regex]
     # Create list of interesting items
     capture_list = []
-    # Load targeted scrub file into a list
-    line_list = txt_to_list(input_file)
-    # Check for content using provided regexs
-    print "Starting scan of {0}:".format(input_file)
-    if line_list:
-        for line in line_list:
-            for regex in regexs:
-                #print "Start Line: {0}".format(line)
-                # Get the start and end indexes for captured regex terms
-                indicies = [[m.start(),m.end()] for m in regex.finditer(line)]
-                # Create default start and end indicies
-                frag_start = 0
-                frag_end = len(line)
-                # Loop over indicies
-                for ipindex in indicies:
-                    ip = str(line[ipindex[0]:ipindex[1]])
-                    print "\tMatched: {0}".format(ip)
-                    # Add a "/32" suffix if IP does not have a mask and add to list
-                    if "/" in ip:
-                        capture_list.append(ip)
-                    else:
-                        capture_list.append(ip + "/32")
-                    # Update the frag_start to last index
-                    frag_start = ipindex[1]
-        print "Completed scan of {0}".format(input_file)
-    # If it failed to read or convert the file
-    else:
-        print "ERROR: Unable to convert file to list: {0}".format(input_file)
+    for input_file in input_files:
+        # Load targeted scrub file into a list
+        line_list = txt_to_list(input_file)
+        # Check for content using provided regexs
+        print "Starting scan of {0}:".format(input_file)
+        if line_list:
+            for line in line_list:
+                for regex in regexs:
+                    #print "Start Line: {0}".format(line)
+                    # Get the start and end indexes for captured regex terms
+                    indicies = [[m.start(),m.end()] for m in regex.finditer(line)]
+                    # Create default start and end indicies
+                    frag_start = 0
+                    frag_end = len(line)
+                    # Loop over indicies
+                    for ipindex in indicies:
+                        ip = str(line[ipindex[0]:ipindex[1]])
+                        print "\tMatched: {0}".format(ip)
+                        # Add a "/32" suffix if IP does not have a mask and add to list
+                        if "/" in ip:
+                            capture_list.append(ip)
+                        else:
+                            capture_list.append(ip + "/32")
+                        # Update the frag_start to last index
+                        frag_start = ipindex[1]
+            print "Completed scan of {0}".format(input_file)
+        # If it failed to read or convert the file
+        else:
+            print "ERROR: Unable to convert file to list: {0}".format(input_file)
     # Remove duplicates and return the capture interesting terms
     return list(set(capture_list))
 
 # This function replaces the IPs in the input_file using the map_ld
-def replace_ips(input_file, map_ld):
+def replace_ips(input_files, map_ld):
     # Create list of interesting items
     capture_list = []
     # Load targeted scrub file into a list
@@ -274,7 +272,7 @@ def replace_ips(input_file, map_ld):
         # Loop over list of lines
         for line in line_list:
             new_line = ''
-            print "Old Line: {0}".format(line)
+            #print "Old Line: {0}".format(line)
             not_matched = True
             # Loop over the replacement list dictionary
             for map_d in map_ld:
@@ -286,7 +284,7 @@ def replace_ips(input_file, map_ld):
             # If there were no IPs or replacments in the file, this will execute
             if not_matched:
                 new_line = line
-            print "New Line: {0}".format(new_line)
+            #print "New Line: {0}".format(new_line)
             # Add replaced line to list
             capture_list.append(new_line)
         print "Completed scan of {0}".format(input_file)
@@ -442,7 +440,7 @@ def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
                     not_valid = True
     return new_ip
 
-# Populates the file using the map file
+# Scans the IP list and creates replacement IPs
 def populate_ld(capture_ld):
     # Populated List Dictionary
     map_ld = []
@@ -530,44 +528,53 @@ if __name__ == '__main__':
     capture_ld = []
     try:
         # Run this if the argument is a directory...
+        file_list = []
         if os.path.isdir(input_file):
-            pass
-        # Otherwise, this is a file...
+            txt_ext = [ ".log", ".txt", ".conf" ]
+            print "A folder was provided..."
+            for root, directories, filenames in os.walk(input_file):
+                for directory in directories:
+                    print os.path.join(root, directory)
+                for filename in filenames:
+                    print os.path.join(root, filename)
+                    if filename.endswith(tuple(txt_ext)):
+                        file_list.append(os.path.join(root, filename))
+            pprint(file_list)
+        # Run this if argument is a file
         else:
-            if ipmap_file and input_file:
-                # Load the exclude list dictionary
-                load_ipmap()
-                # Load the input file
-                print "<- Start Extract Process ->"
-                capture_list = extract_file_ips(input_file)
-                print "<- Ending Extract Process ->"
+            file_list.append(input_file)
 
-                # Process the list (remove excluded IPs, sort)
-                print "<- Start File Process ->"
-                capture_ld = process_capture_list(capture_list)
-                print "<- Ending File Process ->"
-                pprint(capture_ld)
+        # Load the exclude list dictionary
+        load_ipmap()
+        # Collect the IPs from the text file(s) and put into a list
+        print "<- Start Extract Process ->"
+        capture_list = extract_file_ips(file_list)
+        print "<- Ending Extract Process ->"
 
-                # Create Map List Dictionary
-                print "<- Start Populate Process ->"
-                map_ld = populate_ld(capture_ld)
-                print "<- Ending Populate Process ->"
+        # Process the list (removes excluded IPs, sorts, converts to list of dicionaries, removes duplicates)
+        print "<- Start File Process ->"
+        capture_ld = process_capture_list(capture_list)
+        print "<- Ending File Process ->"
 
-                # Perform Replacement Function
-                print "<- Start Replacement Process ->"
-                replaced_list = replace_ips(input_file, map_ld)
-                print "<- Ending Replacement Process ->"
+        # Create Map List Dictionary
+        print "<- Start Populate Process ->"
+        map_ld = populate_ld(capture_ld)
+        print "<- Ending Populate Process ->"
 
-                # Create File From Results List
-                myfile = "replace.txt"
-                if list_to_txt(myfile, replaced_list):
-                    print "<- File: {0} Sucessfully created text file!".format(myfile)
-                else:
-                    print "<- File: {0} Conversion to text file failed!".format(myfile)
-            # Run this if the ipmap_file or input_file is not valid
+        for input_file in file_list:
+            # Perform Replacement Function
+            print "<- Start Replacement Process ->"
+            replaced_list = replace_ips(input_file, map_ld)
+            print "<- Ending Replacement Process ->"
+
+            # Create File From Results List
+            orig_filename = ntpath.basename(input_file)
+            myfile = os.path.join(scrub_dir, "SCRUB||" + orig_filename)
+            if list_to_txt(myfile, replaced_list):
+                print "<- File: {0} Sucessfully created text file!".format(myfile)
             else:
-                print "Please check the input files!"
-                sys.exit(0)
+                print "<- File: {0} Conversion to text file failed!".format(myfile)
+
     except KeyboardInterrupt:
         print 'Exiting...'
         try:
