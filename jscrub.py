@@ -490,6 +490,10 @@ def populate_ld(capture_ld):
     map_ld = []
     # Loop over the high side list dictionary
     for cap_ip in capture_ld:
+        # Check if this IP is IPv6 or IPv4
+
+        # Do this...
+
         # Loop over the content from file
         matched = False
         stars = "*" * 30
