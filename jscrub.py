@@ -239,7 +239,7 @@ def extract_file_ips(input_files):
                             "{0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9])"
                             "{0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:)"
                             "{1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9])"
-                            "{0,1}[0-9]))")
+                            "{0,1}[0-9]))(\/([1][0-1][0-9]|[1][2][0-8]|[0-9][0-9]))?")
     regexs = [ipv4_regex, ipv6_regex]
     # Create list of interesting items
     capture_list = []
@@ -261,9 +261,11 @@ def extract_file_ips(input_files):
                     for ipindex in indicies:
                         ip = str(line[ipindex[0]:ipindex[1]])
                         # print "\tMatched: {0}".format(ip)
-                        # Add a "/32" suffix if IP does not have a mask and add to list
+                        # Add a "/32" suffix to IPv4 and "/128" suffix to IPv6
                         if "/" in ip:
                             capture_list.append(ip)
+                        elif ":" in ip:
+                            capture_list.append(ip + "/128")
                         else:
                             capture_list.append(ip + "/32")
                         # Update the frag_start to last index
@@ -339,6 +341,8 @@ def process_capture_list(capture_list):
         if "/" in raw_ip:
             exp_ip = raw_ip.split("/")
             mydict = {'ip': exp_ip[0], 'mask': exp_ip[1]}
+        elif ":" in raw_ip:
+            mydict = {'ip': raw_ip, 'mask': '128'}
         else:
             mydict = {'ip': raw_ip, 'mask': '32'}
         ld.append(mydict)
@@ -357,6 +361,9 @@ def process_capture_list(capture_list):
             pass
 
     # Return
+    print "New-LD:"
+    pprint(new_ld)
+    quit()
     return new_ld
 
 
