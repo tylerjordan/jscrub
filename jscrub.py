@@ -41,106 +41,6 @@ def detect_env():
         search_dir = os.path.join(dir_path, "search_folder")
         scrub_dir = os.path.join(dir_path, "scrubbed_files")
 
-        # Statically defined files and logs
-        # template_file = os.path.join(dir_path, template_dir, "Template.conf")
-
-
-# Creates an IP
-def get_replacement_ip(raw_ip):
-    masked = False
-    targ_mask = "32"
-    targ_ip = raw_ip
-
-    # Determine if this is a masked IP, assume /32 if no mask
-    # print "-"*60
-    if ":" in raw_ip:
-        targ_mask = "128"
-        # print "Target IP: {0} assigned Mask: {1}.".format(targ_ip, targ_mask)
-        return "fe80::feeb:daed"
-    elif "/" in raw_ip:
-        masked = True
-        targ_mask = raw_ip.split("/")[1]
-        targ_ip = raw_ip.split("/")[0]
-        # print "Target IP: {0} with Mask: {1}".format(targ_ip, targ_mask)
-    else:
-        # print "Target IP: {0} assigned Mask: {1}.".format(targ_ip, targ_mask)
-        pass
-
-    # Matching procedure
-    if not is_excluded(targ_ip):
-        mydict = is_included(targ_ip)
-        # This executes if is_included returns a match
-        if mydict:
-            # print "Match IP: {0} | Dest IP: {1} | Mask: {2}".format(mydict['src_ip'], mydict['dest_ip'], mydict['mask'])
-            # This succeeds if the match was exact, meaning an exact IP match, no changes in ipmap needed, return the
-            # exact match.
-            if 'ip' in mydict['match'] and 'net' in mydict['match']:
-                # print "Analysis: IP and Network Match!\n"
-                # Return masked or unmasked depending on calling requirement
-                if masked:
-                    return mydict['dest_ip'] + "/" + mydict['mask']
-                else:
-                    return mydict['dest_ip']
-            # This succeeds if the match was exact, but a corresponding network does not exist, create it.
-            elif 'ip' in mydict['match']:
-                # print "Analysis: IP ONLY Match!\n"
-                # Check if the target mask is smaller than existing, replace if this is the case
-                if targ_mask < mydict['mask']:
-                    # Change entry to reflect provided mask
-                    mydict = change_dict(include_list, 'src_ip', mydict['src_ip'], 'mask', targ_mask)
-                # Return masked or unmasked depending on calling requirement
-                if masked:
-                    return mydict['dest_ip'] + "/" + targ_mask
-                else:
-                    return mydict['dest_ip']
-            # This succeeds if the network was matched, only need to create an entry for the exact IP
-            elif 'net' in mydict['match']:
-                # Create new IP entry, need to use the network portion of the dest_ip and host portion of targ_ip
-                new_ip = generate_ip(mydict['mask'], targ_ip, mydict['dest_ip'])
-                # print "Analysis: Network ONLY Match!\n"
-                # Add the new IP to the include_list
-                newdict = {'src_ip': targ_ip, 'mask': mydict['mask'], 'dest_ip': new_ip}
-                include_list.append(newdict)
-                # Return masked or unmasked depending on calling requirement
-                if masked:
-                    return mydict['dest_ip'] + "/" + targ_mask
-                else:
-                    return mydict['dest_ip']
-            # This executes if the match was not exact, meaning, we need an entry for this IP
-            else:
-                # print "Analysis: ERROR - Should not execute, this value is invalid: {0}\n".format(mydict['match'])
-                exit()
-        # This executes if is_included doesn't return a match, an unmatched entry!
-        else:
-            # print "Analysis: No IPs Matched: {0}\n".format(targ_ip)
-            # Create new IP
-            new_ip = generate_ip(targ_mask, targ_ip)
-            # print "Generated IP: {0}".format(new_ip)
-            # Add new IP to the include_list
-            newdict = {'src_ip': targ_ip, 'mask': targ_mask, 'dest_ip': new_ip}
-            include_list.append(newdict)
-            # If the IP address is a host address, create a network address
-            ip_list = list(IPNetwork(targ_ip + "/" + targ_mask))
-            # print "Network List: {0}".format(ip_list)
-            if targ_mask != '32' or ip_list[0] != IPAddress(targ_ip):
-                # print "This IP is not a network address or 32 mask. Create a network address for this IP..."
-                new_net = generate_ip(targ_mask, targ_ip, new_ip)
-                newdict = {'src_ip': ip_list[0], 'mask': targ_mask, 'dest_ip': new_net}
-                # print "newdict: {0}".format(newdict)
-            # Return masked or unmasked depending on calling requirement
-            if masked:
-                return new_ip + "/" + targ_mask
-            else:
-                return new_ip
-    else:
-        # print "Analysis: Matched an Excluded IP or Network: {0}\n".format(targ_ip)
-        # Return masked or unmasked depending on calling requirement
-        if masked:
-            return targ_ip + "/" + targ_mask
-        else:
-            return targ_ip
-
-
 # Modify a term in the defined dictionary within a list of dictionaries
 # The match term/val are to identify the correct dictionary only
 # The chg term/val are the key/value to change in the identified dictionary
@@ -388,6 +288,8 @@ def get_net_octets(mask):
 
     return net_octets
 
+def generate_ipv6(hs_ip, hs_mask):
+    pass
 
 # If a network is provided, the network portion of the IP address will be used.
 # LS_IP: Low side IP, from map database
@@ -395,7 +297,7 @@ def get_net_octets(mask):
 # HS_IP: High side IP, captured IP
 # HS_MASK: High side mask, captured MASK
 # MAP_LD: The map database
-def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
+def generate_ipv4(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
     # print "ls_ip: {0}".format(ls_ip)
     # print "ls_mask: {0}".format(ls_mask)
     # print "hs_ip: {0}".format(hs_ip)
@@ -488,16 +390,17 @@ def generate_ip(ls_ip, ls_mask, map_ld=[], hs_ip=0, hs_mask=0):
 def populate_ld(capture_ld):
     # Populated List Dictionary
     map_ld = []
+    is_ipv6 = False
     # Loop over the high side list dictionary
     for cap_ip in capture_ld:
         # Check if this IP is IPv6 or IPv4
-
-        # Do this...
-
+        if ":" in cap_ip['ip']:
+            is_ipv6 = True
         # Loop over the content from file
         matched = False
         stars = "*" * 30
         # print "\n{1} {0} [START] {1}".format(cap_ip['ip'], stars)
+
         # Execute this if we have entries in the map_ld
         if map_ld:
             map_d = {}
@@ -516,7 +419,7 @@ def populate_ld(capture_ld):
                 ls_ip_mask = map_d['ls_ip'] + "/" + map_d['ls_mask']
                 cap_ip_mask = map_d['cap_ip'] + "/" + map_d['cap_mask']
                 # print "-> Using Low-side Address: {0}".format(ls_ip_mask)
-                new_ip = generate_ip(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'],
+                new_ip = generate_ipv4(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'],
                                      map_d['cap_mask'])
                 # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(map_d['cap_ip'],
                 #                                                                  map_d['cap_mask'], new_ip)
@@ -525,16 +428,19 @@ def populate_ld(capture_ld):
                 # quit()
             # Run this if no match was found. Create an IP and add it to the map_ld
             else:
-                # print "-> No match found"
-                new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-                # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
-                #                                                                  cap_ip['mask'], new_ip)
-                map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
-                map_ld.append(map_dict)
+                if is_ipv6:
+                    new_ip = generate_ipv6
+                else:
+                    # print "-> No match found"
+                    new_ip = generate_ipv4(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+                    # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
+                    #                                                                  cap_ip['mask'], new_ip)
+                    map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+                    map_ld.append(map_dict)
         # If there are no entries in map_ld, create a new entry
         else:
             # print "-> No entries in map database"
-            new_ip = generate_ip(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+            new_ip = generate_ipv4(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
             # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'], cap_ip['mask'],
             #                                                                  new_ip)
             map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
