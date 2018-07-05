@@ -6,7 +6,7 @@ import argparse
 import ntpath
 
 from operator import itemgetter
-from random import randrange
+from random import randrange, randint
 from sys import stdout
 from netaddr import IPAddress, IPNetwork
 from utility import *
@@ -261,9 +261,9 @@ def process_capture_list(capture_list):
             pass
 
     # Return
-    print "New-LD:"
-    pprint(new_ld)
-    quit()
+    #print "New-LD:"
+    #pprint(new_ld)
+    #quit()
     return new_ld
 
 
@@ -288,8 +288,85 @@ def get_net_octets(mask):
 
     return net_octets
 
-def generate_ipv6(hs_ip, hs_mask):
-    pass
+def frm(x, b):
+    """
+    Converts given number x, from base 10 to base b 
+    x -- the number in base 10
+    b -- base to convert
+    """
+    assert(x >= 0)
+    assert(1< b < 37)
+    r = ''
+    import string
+    while x > 0:
+        r = string.printable[x % b] + r
+        x //= b
+    return r
+
+
+# Well-known IPv6 addresses (ignore these)
+# ::            - 0:0:0:0:0:0:0:0
+# ::/0          - 0:0:0:0:0:0:0:0
+# ::#           - 0:0:0:0:0:0:0:#
+# ::#/128       - 0:0:0:0:0:0:0:#
+# Translate the following
+# - If "::"s are found in the address and they aren't the well-known above. Need to...
+# 1. capture octets on either side (using split for "::")
+# 2. create random octets, reassemble address
+# 3. check that the entry is unique
+# 3a. If octet is "ffff", keep it that way
+# 4. apply to mapping ld
+# - If "::"s are NOT found, break out all octets (using split on ":")
+def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
+    print "IP: {0} | Mask: {1}".format(hs_ip, hs_mask)
+
+    new_ip = ""
+    new_octet = ""
+    first_loop = True
+    # Check for double octet
+    if "::" in hs_ip:
+        # Format IP
+        double_octet = re.split("::", hs_ip)
+        first_part = double_octet[0].split(":")
+        second_part = double_octet[1].split(":")
+        # Loop over first group of IP fragments
+        for octet in first_part:
+            if not first_loop:
+                new_ip += ":"
+            else:
+                first_loop = False
+            if octet != "ffff":
+                new_octet = frm(randint(0, 16**4), 16)
+            else:
+                new_octet = "ffff"
+            new_ip += new_octet
+        # Loop over second group of IP fragments
+        new_ip += "::"
+        for octet in second_part:
+            if not first_loop:
+                new_ip += ":"
+            else:
+                first_loop = False
+            if octet != "ffff":
+                new_octet = frm(randint(0, 16**4), 16)
+            else:
+                new_octet = "ffff"
+            new_ip += new_octet
+    # If no double octet, do a standard replace
+    else:
+        octets = hs_ip.split(":")
+        for octet in octets:
+            if not first_loop:
+                new_ip += ":"
+            else:
+                first_loop = False
+            if octet != "ffff":
+                new_octet = frm(randint(0, 16**4), 16)
+            else:
+                new_octet = "ffff"
+            new_ip += new_octet
+    print "New IP: {0} | Mask: {1}".format(new_ip, hs_mask)
+    quit(0)
 
 # If a network is provided, the network portion of the IP address will be used.
 # LS_IP: Low side IP, from map database
@@ -394,6 +471,7 @@ def populate_ld(capture_ld):
     # Loop over the high side list dictionary
     for cap_ip in capture_ld:
         # Check if this IP is IPv6 or IPv4
+        #print "Scanning: {0}".format(cap_ip['ip'])
         if ":" in cap_ip['ip']:
             is_ipv6 = True
         # Loop over the content from file
@@ -411,7 +489,7 @@ def populate_ld(capture_ld):
                 # Compare high side IPs from the map_ld and capture_ld
                 if IPNetwork(cap_ip_mask) in IPNetwork(hs_ip_mask):
                     matched = True
-                    # print "Matched: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
+                    print "Matched: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
                     map_d = {'ls_ip': map_ips['ls_ip'], 'ls_mask': map_ips['mask'], 'cap_ip': cap_ip['ip'],
                              'cap_mask': cap_ip['mask']}
             # Run this if a match was made...
@@ -429,7 +507,7 @@ def populate_ld(capture_ld):
             # Run this if no match was found. Create an IP and add it to the map_ld
             else:
                 if is_ipv6:
-                    new_ip = generate_ipv6
+                    new_ip = generate_ipv6(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
                 else:
                     # print "-> No match found"
                     new_ip = generate_ipv4(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
@@ -439,14 +517,17 @@ def populate_ld(capture_ld):
                     map_ld.append(map_dict)
         # If there are no entries in map_ld, create a new entry
         else:
-            # print "-> No entries in map database"
-            new_ip = generate_ipv4(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
-            # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'], cap_ip['mask'],
-            #                                                                  new_ip)
-            map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
-            map_ld.append(map_dict)
-            # print "{1} {0} [END] {1}\n".format(cap_ip['ip'], stars)
-
+            if is_ipv6:
+                new_ip = generate_ipv6(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+            else:
+                # print "-> No entries in map database"
+                new_ip = generate_ipv4(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
+                # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'], cap_ip['mask'],
+                #                                                                  new_ip)
+                map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+                map_ld.append(map_dict)
+                # print "{1} {0} [END] {1}\n".format(cap_ip['ip'], stars)
+    # Return map list dictionary
     return map_ld
 
 
