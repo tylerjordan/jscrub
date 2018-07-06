@@ -553,8 +553,8 @@ if __name__ == '__main__':
     # Argument Parser
     # User will either provide an input_file or a folder structure to walk through and scrub all files.
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_file", type=str, help="input ASCII-formatted filename")
-    parser.add_argument("-i", "--ipmap_file", type=str, help="ipmap support files")
+    parser.add_argument("-file", "--input_file", type=str, help="input ASCII-formatted filename")
+    parser.add_argument("-ipmap", "--ipmap_file", type=str, help="ipmap support files")
     args = parser.parse_args()
 
     # Input arguments
