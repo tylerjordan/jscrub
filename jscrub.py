@@ -20,6 +20,7 @@ exclude_list = []
 # Global Directories
 search_dir = ''
 scrub_dir = ''
+dir_path = ''
 
 
 def detect_env():
@@ -29,6 +30,7 @@ def detect_env():
     """
     global search_dir
     global scrub_dir
+    global dir_path
 
     dir_path = os.path.dirname(os.path.abspath(__file__))
     if platform.system().lower() == "windows":
@@ -558,8 +560,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Input arguments
-    input_file = args.input_file
-    ipmap_file = args.ipmap_file
+    input_file = os.path.join(dir_path, args.input_file)
+    ipmap_file = os.path.join(dir_path, args.ipmap_file)
 
     # IPMAP List Dictionary
     # - IPs will have IP address and mask
