@@ -259,11 +259,7 @@ def process_capture_list(capture_list):
         else:
             # print "Found duplicate ip: {0} mask: {1} !!!".format(mydict['ip'], mydict['mask'])
             pass
-
     # Return
-    #print "New-LD:"
-    #pprint(new_ld)
-    #quit()
     return new_ld
 
 
@@ -288,6 +284,8 @@ def get_net_octets(mask):
 
     return net_octets
 
+
+# Converts a base 10 number to base 16
 def frm(x, b):
     """
     Converts given number x, from base 10 to base b 
@@ -318,8 +316,7 @@ def frm(x, b):
 # 4. apply to mapping ld
 # - If "::"s are NOT found, break out all octets (using split on ":")
 def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
-    print "IP: {0} | Mask: {1}".format(hs_ip, hs_mask)
-
+    print "Old IP: {0} | Mask: {1}".format(hs_ip, hs_mask)
     new_ip = ""
     new_octet = ""
     first_loop = True
@@ -366,7 +363,9 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
                 new_octet = "ffff"
             new_ip += new_octet
     print "New IP: {0} | Mask: {1}".format(new_ip, hs_mask)
-    quit(0)
+    # Return the created IP
+    return new_ip
+
 
 # If a network is provided, the network portion of the IP address will be used.
 # LS_IP: Low side IP, from map database
@@ -474,11 +473,13 @@ def populate_ld(capture_ld):
         #print "Scanning: {0}".format(cap_ip['ip'])
         if ":" in cap_ip['ip']:
             is_ipv6 = True
+        else:
+            is_ipv6 = False
         # Loop over the content from file
-        matched = False
+        exact_match = False
+        net_match = False
         stars = "*" * 30
         # print "\n{1} {0} [START] {1}".format(cap_ip['ip'], stars)
-
         # Execute this if we have entries in the map_ld
         if map_ld:
             map_d = {}
@@ -486,19 +487,30 @@ def populate_ld(capture_ld):
             for map_ips in map_ld:
                 hs_ip_mask = map_ips['hs_ip'] + "/" + map_ips['mask']
                 cap_ip_mask = cap_ip['ip'] + "/" + cap_ip['mask']
+                # Check if this is an exact match
+                if cap_ip_mask == hs_ip_mask:
+                    exact_match = True
+                    print "Exact Match: {0} is an exact match of {1}".format(cap_ip_mask, hs_ip_mask)
+                    break
                 # Compare high side IPs from the map_ld and capture_ld
-                if IPNetwork(cap_ip_mask) in IPNetwork(hs_ip_mask):
-                    matched = True
-                    print "Matched: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
+                elif IPNetwork(cap_ip_mask) in IPNetwork(hs_ip_mask):
+                    net_match = True
+                    print "Network Match: {0} is a subnet of {1}".format(cap_ip_mask, hs_ip_mask)
                     map_d = {'ls_ip': map_ips['ls_ip'], 'ls_mask': map_ips['mask'], 'cap_ip': cap_ip['ip'],
                              'cap_mask': cap_ip['mask']}
             # Run this if a match was made...
-            if matched:
+            if exact_match:
+                print "No changeds needed!"
+            elif net_match:
                 ls_ip_mask = map_d['ls_ip'] + "/" + map_d['ls_mask']
                 cap_ip_mask = map_d['cap_ip'] + "/" + map_d['cap_mask']
                 # print "-> Using Low-side Address: {0}".format(ls_ip_mask)
-                new_ip = generate_ipv4(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'],
-                                     map_d['cap_mask'])
+                if is_ipv6:
+                    new_ip = generate_ipv6(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'],
+                                           map_d['cap_mask'])
+                else:
+                    new_ip = generate_ipv4(map_d['ls_ip'], map_d['ls_mask'], map_ld, map_d['cap_ip'],
+                                         map_d['cap_mask'])
                 # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(map_d['cap_ip'],
                 #                                                                  map_d['cap_mask'], new_ip)
                 map_dict = {'ls_ip': new_ip, 'mask': map_d['cap_mask'], 'hs_ip': map_d['cap_ip']}
@@ -513,8 +525,8 @@ def populate_ld(capture_ld):
                     new_ip = generate_ipv4(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
                     # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'],
                     #                                                                  cap_ip['mask'], new_ip)
-                    map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
-                    map_ld.append(map_dict)
+                map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+                map_ld.append(map_dict)
         # If there are no entries in map_ld, create a new entry
         else:
             if is_ipv6:
@@ -524,8 +536,8 @@ def populate_ld(capture_ld):
                 new_ip = generate_ipv4(cap_ip['ip'], cap_ip['mask'], map_ld=map_ld)
                 # print "-> New Mapping is: HS_IP: {0} Mask: {1} LS_IP: {2}".format(cap_ip['ip'], cap_ip['mask'],
                 #                                                                  new_ip)
-                map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
-                map_ld.append(map_dict)
+            map_dict = {'ls_ip': new_ip, 'mask': cap_ip['mask'], 'hs_ip': cap_ip['ip']}
+            map_ld.append(map_dict)
                 # print "{1} {0} [END] {1}\n".format(cap_ip['ip'], stars)
     # Return map list dictionary
     return map_ld
