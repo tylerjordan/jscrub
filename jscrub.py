@@ -267,24 +267,43 @@ def process_capture_list(capture_list):
 
 # Provide a mask as a string and get the number of network octets
 # Creates an IP using a network ip/mask or just mask
-# /0 - /7 -> Not defined
-# /8 - /15 -> Randomize 1st octet, keep last 3
-# /16 - /23 -> Randomize first 2 octets, keep last 2
-# /24 - /31 -> Randomize first 3 octets, keep last 1
-# /32 -> Randomize all octets
-#
-def get_net_octets(mask):
+# /0 - /16 -> 1st Octet is static (1)
+# /17 - /23 -> Octets 1,2 are static (2)
+# /17 - /24 -> Octets 1,2,3 are static (3)
+# /32 -> All Octets are static
+def get_rand_octets(mask):
     net_octets = 0
-    if 0 < int(mask) <= 15:
+    if 0 < int(mask) <= 16:
         net_octets = 1
-    elif 16 <= int(mask) <= 23:
+    elif 17 <= int(mask) <=23 :
         net_octets = 2
     elif 24 <= int(mask) <= 31:
         net_octets = 3
     elif int(mask) == 32:
         net_octets = 4
-
     return net_octets
+
+# This is the number of octets that are being used ONLY for host addressing, from right to left.
+def get_host_octets(mask):
+    host_octets = 0
+    net_octets = 0
+    if 0 < int(mask) <=8:
+        host_octets = 3
+        net_octets = 1
+    elif 9 < int(mask) <= 16:
+        host_octets = 2
+        net_octets = 2
+    elif 17 <= int(mask) <= 23:
+        host_octets = 1
+        net_octets = 3
+    elif 24 <= int(mask) <= 31:
+        host_octets = 0
+        net_octets = 4
+    elif int(mask) == 32:
+        host_octets = 4
+        net_octets = 4
+    return host_octets, net_octets
+
 
 
 # Converts a base 10 number to base 16
@@ -376,7 +395,7 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
 # HS_MASK: High side mask, captured MASK
 # MAP_LD: The map database
 def generate_ipv4(cap_ip, cap_mask, map_ld=[], hs_ip=0, hs_mask=0):
-    print "\nArguments Provided:"
+    print "***** Arguments Provided *****"
     print "cap_ip: {0}".format(cap_ip)
     print "cap_mask: {0}".format(cap_mask)
     print "hs_ip: {0}".format(hs_ip)
@@ -390,7 +409,10 @@ def generate_ipv4(cap_ip, cap_mask, map_ld=[], hs_ip=0, hs_mask=0):
     # If HS IP is supplied, break it out as well
     if hs_ip:
         hs_net = get_net_octets(hs_mask)
+        print "HS NET: {0}".format(hs_net)
         hs_octets = hs_ip.split(".")
+        print "HS OCTETS: {0}".format(hs_octets)
+    print "*"*30
     octets = ['0', '0', '0', '0']
     # Perform this loop until we have a valid / non-duplicate IP address
     while ip_not_valid:
@@ -436,6 +458,7 @@ def generate_ipv4(cap_ip, cap_mask, map_ld=[], hs_ip=0, hs_mask=0):
                 octets[3] = str(randrange(1, 254))
         # Execute the ELSE if no network was matched from the database
         else:
+            print "No IP in database...."
             if cap_net == 3 or cap_net == 4:
                 octets[0] = str(randrange(1, 254))
                 octets[1] = str(randrange(1, 254))
@@ -448,7 +471,7 @@ def generate_ipv4(cap_ip, cap_mask, map_ld=[], hs_ip=0, hs_mask=0):
                 octets[3] = cap_octets[3]
             elif cap_net == 1:
                 octets[0] = str(randrange(1, 254))
-                octets[1] = cap_octets[2]
+                octets[1] = cap_octets[1]
                 octets[2] = cap_octets[2]
                 octets[3] = cap_octets[3]
         # Combine the octets
@@ -491,7 +514,7 @@ def populate_ld(capture_ld):
         exact_match = False
         net_match = False
         # Execute this if we have entries in the map_ld
-        print "Check Address -> IP: {0} MASK: {1}".format(cap_ip['ip'], cap_ip['mask'])
+        print "\nCheck Address -> IP: {0} MASK: {1}".format(cap_ip['ip'], cap_ip['mask'])
         if map_ld:
             map_d = {}
             # Loop over the populated map list dictionary
@@ -637,6 +660,8 @@ if __name__ == '__main__':
         stdout.write("-> Processing the IP list ... ")
         capture_ld = process_capture_list(capture_list)
         print "Done!"
+        print capture_ld
+        exit(0)
 
         # Create Map List Dictionary
         stdout.write("-> Creating IP mappings ... ")
