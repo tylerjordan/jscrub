@@ -453,7 +453,7 @@ def generate_ipv4(cap_ip, is_net=False):
     mask = cap_ip.prefixlen
     print my_ip
 
-    # The octet
+    # Adding comments
     octets = ['0', '0', '0', '0']
     # Get first octet
     if my_ip['octet0']['type'] == 'net':
