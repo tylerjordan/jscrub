@@ -289,7 +289,7 @@ def process_capture_list(capture_list):
     return sorted_ips
 
 
-# This is the number of octets that are being used ONLY for host addressing, from right to left.
+# This gets the status of each octet, according to CIDR rules
 def get_host_octets(new_ip):
     mask = int(new_ip.prefixlen)
     octets = str(new_ip.ip).split(".")
@@ -346,13 +346,18 @@ def get_host_octets(new_ip):
 
 # Create a network list from a netaddr IPNetwork object
 def get_net_list(new_ip, octet):
-    nets = (int(str(new_ip.broadcast).split('.')[1]) - int(octet)) + 1
+    nets = get_net_size(new_ip, octet)
     idx = 0
     net_list = []
     while idx < 256:
         net_list.append(idx)
         idx += nets
     return net_list
+
+# Returns the net size octet
+def get_net_size(new_ip, octet):
+    nets = (int(str(new_ip.broadcast).split('.')[1]) - int(octet)) + 1
+    return nets
 
 # Converts a base 10 number to base 16
 def frm(x, b):
@@ -437,67 +442,129 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
 
 
 # If a network is provided, the network portion of the IP address will be used.
-# LS_IP: Low side IP, from map database
-# LS_MASK: Low side mask, from map database
-# HS_IP: High side IP, captured IP
-# HS_MASK: High side mask, captured MASK
-# MAP_LD: The map database
-def generate_ipv4(cap_ip, is_net=False):
+# cap_ip: The IP from the text document in it's non-scrubbed form
+# map_ip: The IP from the map database, the LS IP
+def generate_ipv4(cap_ip, map_ip=None, match='none'):
     print "\n***** Arguments Provided *****"
     print "cap_ip: {0}".format(cap_ip.ip)
     print "cap_mask: {0}".format(cap_ip.prefixlen)
     print "*" * 30
 
     # Perform this loop until we have a valid / non-duplicate IP address
-    my_ip = get_host_octets(cap_ip)
-    mask = cap_ip.prefixlen
-    print my_ip
+    cap_oct = get_host_octets(cap_ip)
+    cap_mask = cap_ip.prefixlen
+    print cap_oct
 
-    # Adding comments
+    map_oct = get_host_octets(map_ip)
+    map_mask = map_ip.prefixlen
+    print map_oct
+
     octets = ['0', '0', '0', '0']
-    # Get first octet
-    if my_ip['octet0']['type'] == 'net':
-        octets[0] = str(randrange(1, 254))
-    elif my_ip['octet0']['type'] == 'nethost':
-        octets[0] = my_ip['rand_net']
-    #print "Oct0: {0}".format(octets[0])
 
-    # Get second octet
-    if my_ip['octet1']['type'] == 'net':
-        octets[1] = str(randrange(1,254))
-    elif my_ip['octet1']['type'] == 'nethost':
-        octets[1] = my_ip['rand_net']
-    elif my_ip['octet1']['type'] == 'host':
-        if is_net:
-            octets[1] = '0'
+    # If there's an exact (network) match, we want to make an exact host match (if IP is a host address)
+    if match == 'exact' and map_ip:
+        # First octet
+        if cap_oct['octet0']['type'] == 'net':
+            octets[0] = map_oct['octet0']['val']
+        elif cap_oct['octet0']['type'] == 'nethost':
+            octets[0] = map_oct['rand_net']
+        # Second octet
+        if cap_oct['octet1']['type'] == 'net':
+            octets[1] = map_oct['octet1']['val']
+        elif cap_oct['octet1']['type'] == 'nethost':
+            rand_net = int(map_oct['rand_net'])
+            rand_range = get_net_size(map_ip, map_oct['octet1']['val'])
+            rand_host = str(randrange((rand_net + 1), (rand_range - 2)))
+            octets[1] = str(rand_host)
+        elif cap_oct['octet1']['type'] == 'host':
+            octets[1] = cap_oct['octet1']['val']
+        # Third Octet
+        if cap_oct['octet2']['type'] == 'net':
+
+
+
+
+    # map_ip is a network IP
+    # If there's a partial (network) match, we want to make an exact network match
+    elif match == 'partial' and map_ip:
+        # Create the IP...
+        if map_mask < 16:
+            # First octet options...
+            octets[0] = map_oct['octet0']['val']
+            # Second octet options...
+            if cap_oct['octet1']['type'] == 'nethost':
+                octets[1] = cap_oct['rand_net']
+            elif cap_oct['octet1']['type'] == 'host':
+                octets[1] = '0'
+            # Third octet options...
+            if cap_oct['octet2']['type'] == 'nethost':
+                octets[2] = cap_oct['rand_net']
+            elif cap_oct['octet2']['type'] == 'host':
+                octets[2] = '0'
+            # Fourth octet options...
+            if cap_oct['octet3']['type'] == 'nethost':
+                octets[3] = cap_oct['rand_net']
+            elif cap_oct['octet3']['type'] == 'host':
+                octets[3] = '0'
+
+        elif map_mask < 24:
+            octets[0] = map_oct['octet0']['val']
+            octets[1] = map_oct['octet1']['val']
+            # Third octet options...
+            if cap_oct['octet2']['type'] == 'nethost':
+                octets[2] = cap_oct['rand_net']
+            elif cap_oct['octet2']['type'] == 'host':
+                octets[2] = '0'
+
+            # Fourth octet options...
+            if cap_oct['octet3']['type'] == 'nethost':
+                octets[3] = cap_oct['rand_net']
+            elif cap_oct['octet3']['type'] == 'host':
+                octets[3] = '0'
+
         else:
-            octets[1] = my_ip['octetl']['val']
-    #print "Oct1: {0}".format(octets[1])
+            octets[0] = map_oct['octet0']['val']
+            octets[1] = map_oct['octet1']['val']
+            octets[2] = map_oct['octet2']['val']
+            # Fourth octet options...
+            if cap_oct['octet3']['type'] == 'nethost':
+                octets[3] = cap_oct['rand_net']
+            elif cap_oct['octet3']['type'] == 'host':
+                octets[3] = '0'
 
-    # Get third octet
-    if my_ip['octet2']['type'] == 'net':
-        octets[2] = str(randrange(1,254))
-    elif my_ip['octet2']['type'] == 'nethost':
-        octets[2] = my_ip['rand_net']
-    elif my_ip['octet2']['type'] == 'host':
-        if is_net:
+    # If no match has been made, we want to make a general network match...
+    else:
+        # Get first octet
+        if cap_oct['octet0']['type'] == 'net':
+            octets[0] = str(randrange(1, 254))
+        elif cap_oct['octet0']['type'] == 'nethost':
+            octets[0] = cap_oct['rand_net']
+        #print "Oct0: {0}".format(octets[0])
+
+        # Get second octet
+        if cap_oct['octet1']['type'] == 'net':
+            octets[1] = str(randrange(1,254))
+        elif cap_oct['octet1']['type'] == 'nethost':
+            octets[1] = cap_oct['rand_net']
+        elif cap_oct['octet1']['type'] == 'host':
+                octets[1] = '0'
+
+        # Get third octet
+        if cap_oct['octet2']['type'] == 'net':
+            octets[2] = str(randrange(1,254))
+        elif cap_oct['octet2']['type'] == 'nethost':
+            octets[2] = cap_oct['rand_net']
+        elif cap_oct['octet2']['type'] == 'host':
             octets[2] = '0'
-        else:
-            octets[2] = my_ip['octet2']['val']
-    #print "Oct2: {0}".format(octets[2])
 
-    # Get fourth octet
-    if my_ip['octet3']['type'] == 'nethost':
-        octets[3] = my_ip['rand_net']
-    elif my_ip['octet3']['type'] == 'host':
-        if is_net:
+        # Get fourth octet
+        if cap_oct['octet3']['type'] == 'nethost':
+            octets[3] = cap_oct['rand_net']
+        elif cap_oct['octet3']['type'] == 'host':
             octets[3] = '0'
-        else:
-            octets[3] = my_ip['octet3']['val']
-    #print "Oct3: {0}".format(octets[3])
 
     # Combine octets into an IPv4 address
-    new_ip = ".".join(octets) + "/" + str(mask)
+    new_ip = ".".join(octets) + "/" + str(cap_mask)
     print "New IP: {0}".format(new_ip)
     """
     # This IF will execute if a network has been matched to the cap IP.
@@ -543,11 +610,11 @@ def check_host_ld(map_ld, cap_ip):
 
 # Check if this IP is in the NET mapping dictionary
 def check_net_ld(map_ld, cap_ip):
-    results = {'match': 'none'}
+    results = {'match': 'none', 'ip': ''}
     if map_ld:
         for map_net in map_ld:
             # Check if this IP matches any of the network IPs
-            if cap_ip.ip == map_net.ip:
+            if cap_ip.network == map_net.network:
                 print "Exact Network Match: {0} matches {1}".format(cap_ip.ip, map_net.ip)
                 results['match'] = 'exact'
                 results['ip'] = map_net
@@ -557,8 +624,6 @@ def check_net_ld(map_ld, cap_ip):
                 results['match'] = 'partial'
                 results['ip'] = map_net
     return results
-
-
 
 # Scans the IP list and creates replacement IPs
 # Capture LD (cap_ip) are the captured IPs from the document
@@ -578,7 +643,7 @@ def populate_ld(ip_list):
         net_match = False
         net_mapping = True
 
-        # Continue this loop until the original IP is mapped
+        # Continue this loop until the original IP is matched
         while net_mapping:
             # If the IP is a network address
             if is_network:
@@ -588,7 +653,7 @@ def populate_ld(ip_list):
                 if results['match'] == "exact":
                     if cap_ip.prefixlen < results['ip'].prefixlen:
                         # Remove old IP and add new one
-                        pass
+                        net_mapping = True
                 # If the match was from a network with a lower mask
                 elif results['match'] == "partial":
                     # Create a new network address using the matching address
@@ -602,17 +667,17 @@ def populate_ld(ip_list):
                 in_host_ld = check_host_ld(host_ld, cap_ip)
                 # If the IP was NOT found in the database
                 if not in_host_ld:
-                    # Check the Network database for a closer match
+                    # Check the Network database for a network match
                     results = check_net_ld(network_ld, cap_ip)
-                    # If the match was exact for IP
+                    # If the match was exact for network
                     if results['match'] == "exact":
                         if cap_ip.prefixlen < results['ip'].prefixlen:
                             # Remove old IP and add new one
-                            pass
+                            net_mapping = True
                     # If the match was from a network with a lower mask
                     elif results['match'] == "partial":
                         # Create a new network address using the matching address
-                        pass
+                        new_ip = generate_ipv4(cap_ip, results['ip'], match='partial')
                     elif results['match'] == "none":
                         # Create a new network address with the nearest classful address
                         new_ip = ''
@@ -620,7 +685,7 @@ def populate_ld(ip_list):
                             # Create a /8 network for this IP
                             octets = str(cap_ip.ip).split('.')
                             new_net = octets[0] + ".0.0.0/8"
-                            new_ip = generate_ipv4(IPNetwork(new_net), is_net=True)
+                            new_ip = generate_ipv4(IPNetwork(new_net), match='none')
                         elif cap_ip.prefixlen < 24:
                             # Create a /16 network for this IP
                             octets = str(cap_ip.ip).split('.')
