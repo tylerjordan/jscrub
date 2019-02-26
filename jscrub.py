@@ -444,20 +444,21 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
 # If a network is provided, the network portion of the IP address will be used.
 # cap_ip: The IP from the text document in it's non-scrubbed form
 # map_ip: The IP from the map database, the LS IP
-def generate_ipv4(cap_ip, map_ip=None, match='none'):
+def generate_ipv4(cap_ip, map_ip='', match='none'):
     print "\n***** Arguments Provided *****"
     print "cap_ip: {0}".format(cap_ip.ip)
     print "cap_mask: {0}".format(cap_ip.prefixlen)
-    print "*" * 30
+    print "******************************"
 
-    # Perform this loop until we have a valid / non-duplicate IP address
+    # Create the capture and ip dictionaries
     cap_oct = get_host_octets(cap_ip)
     cap_mask = cap_ip.prefixlen
     print cap_oct
 
-    map_oct = get_host_octets(map_ip)
-    map_mask = map_ip.prefixlen
-    print map_oct
+    if map_ip:
+        map_oct = get_host_octets(map_ip)
+        map_mask = map_ip.prefixlen
+        print map_oct
 
     octets = ['0', '0', '0', '0']
 
@@ -480,8 +481,22 @@ def generate_ipv4(cap_ip, map_ip=None, match='none'):
             octets[1] = cap_oct['octet1']['val']
         # Third Octet
         if cap_oct['octet2']['type'] == 'net':
-
-
+            octets[2] = map_oct['octet2']['val']
+        elif cap_oct['octet2']['type'] == 'nethost':
+            rand_net = int(map_oct['rand_net'])
+            rand_range = get_net_size(map_ip, map_oct['octet2']['val'])
+            rand_host = str(randrange((rand_net + 1), (rand_range - 2)))
+            octets[2] = str(rand_host)
+        elif cap_oct['octet1']['type'] == 'host':
+            octets[2] = cap_oct['octet2']['val']
+        # Fourth Octet
+        if cap_oct['octet2']['type'] == 'nethost':
+            rand_net = int(map_oct['rand_net'])
+            rand_range = get_net_size(map_ip, map_oct['octet2']['val'])
+            rand_host = str(randrange((rand_net + 1), (rand_range - 2)))
+            octets[2] = str(rand_host)
+        elif cap_oct['octet1']['type'] == 'host':
+            octets[2] = cap_oct['octet2']['val']
 
 
     # map_ip is a network IP
@@ -690,18 +705,17 @@ def populate_ld(ip_list):
                             # Create a /16 network for this IP
                             octets = str(cap_ip.ip).split('.')
                             new_net = octets[0] + "." + octets[1] + ".0.0/16"
-                            new_ip = generate_ipv4(IPNetwork(new_net), is_net=True)
+                            new_ip = generate_ipv4(IPNetwork(new_net), match='none')
                         else:
                             # Create a /24 network for any other IPs
                             octets = str(cap_ip.ip).split('.')
                             new_net = octets[0] + "." + octets[1] + "." + octets[2] + ".0/24"
-                            new_ip = generate_ipv4(IPNetwork(new_net), is_net=True)
+                            new_ip = generate_ipv4(IPNetwork(new_net), match='none')
                         # Add the new mapping
                         if new_ip:
                             network_ld.append(new_ip)
                         print "Network LD"
                         print network_ld
-                        exit(0)
                 # If the IP was found
                 else:
                     pass
