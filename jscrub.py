@@ -475,7 +475,7 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
         elif cap_oct['octet1']['type'] == 'nethost':
             rand_net = int(map_oct['rand_net'])
             #print "Rand net: {0}".format(rand_net)
-            rand_range = get_net_size(map_ip, str(map_oct['octet1']['val']))
+            rand_range = get_net_size(map_ip, map_oct['octet1']['val'])
             #print "Rand range: {0}".format(rand_range)
             rand_host = str(randrange((rand_net + 1), (rand_range - 2)))
             octets[1] = str(rand_host)
@@ -486,7 +486,7 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
             octets[2] = map_oct['octet2']['val']
         elif cap_oct['octet2']['type'] == 'nethost':
             rand_net = int(map_oct['rand_net'])
-            rand_range = get_net_size(map_ip, str(map_oct['octet2']['val']))
+            rand_range = get_net_size(map_ip, map_oct['octet2']['val'])
             rand_host = str(randrange((rand_net + 1), (rand_range - 2)))
             octets[2] = str(rand_host)
         elif cap_oct['octet2']['type'] == 'host':
@@ -494,7 +494,7 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
         # Fourth Octet
         if cap_oct['octet3']['type'] == 'nethost':
             rand_net = int(map_oct['rand_net'])
-            rand_range = get_net_size(map_ip, str(map_oct['octet3']['val']))
+            rand_range = get_net_size(map_ip, map_oct['octet3']['val'])
             rand_host = str(randrange((rand_net + 1), (rand_range - 2)))
             octets[3] = str(rand_host)
         elif cap_oct['octet3']['type'] == 'host':
