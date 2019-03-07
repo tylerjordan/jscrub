@@ -40,12 +40,12 @@ def detect_env():
     dir_path = os.path.dirname(os.path.abspath(__file__))
     if platform.system().lower() == "windows":
         # print "Environment Windows!"
-        search_dir = os.path.join(dir_path, "search_folder")
+        search_dir = os.path.join(dir_path, "unscrubbed")
         scrub_dir = os.path.join(dir_path, "scrubbed_files")
 
     else:
         # print "Environment Linux/MAC!"
-        search_dir = os.path.join(dir_path, "search_folder")
+        search_dir = os.path.join(dir_path, "unscrubbed")
         scrub_dir = os.path.join(dir_path, "scrubbed_files")
 
 # Modify a term in the defined dictionary within a list of dictionaries
@@ -187,7 +187,7 @@ def extract_file_ips(input_files):
 
 # This function replaces the IPs in the input_file using the map_ld
 # Try to make this function replace text using textmap and regexmap
-def replace_ips(input_files, map_ld):
+def replace_ips(input_file):
     # Create list of interesting items
     capture_list = []
     # Load targeted scrub file into a list
@@ -213,9 +213,9 @@ def replace_ips(input_files, map_ld):
                     not_matched = False
                     line = new_line
             # Loop over the replacement list dictionary
-            for map_d in map_ld:
-                if map_d['hs_ip'] in line:
-                    new_line = re.sub(map_d['hs_ip'], map_d['ls_ip'], line)
+            for host_d in host_ld:
+                if str(host_d['hs_ip'].ip) in line:
+                    new_line = re.sub(str(host_d['hs_ip'].ip), str(host_d['ls_ip'].ip), line)
                     # print "\tReplacing: {0} with {1}".format(map_d['hs_ip'], map_d['ls_ip'])
                     not_matched = False
                     line = new_line
@@ -780,22 +780,11 @@ def populate_ld(ip_list):
                         if new_ip:
                             new_entry = {"hs_ip": IPNetwork(top_net), "ls_ip": new_ip}
                             network_ld.append(new_entry)
-                        #print "Network LD"
-                        #pprint(network_ld)
-                # If the IP was found
+                # If the IP was found...
                 else:
-                    #print("....... Completed!")
                     print " .......... {0} -> {1} Complete!".format(cap_ip.ip,  host_results['ip'])
                     net_mapping = False
-        #print " .......... Completed IP: {0}/{1}".format(host_results['ip'])
-    #print "HOST LD"
-    #for entry in host_ld:
-    #    print "HS: {0}/{1} -> \tLS: {2}/{3}".format(entry['hs_ip'].ip, entry['hs_ip'].prefixlen, entry['ls_ip'].ip, entry['ls_ip'].prefixlen)
     print "- Popluate Function Complete -"
-
-
-    exit(0)
-
 
 # START OF SCRIPT #
 if __name__ == '__main__':
@@ -879,7 +868,6 @@ if __name__ == '__main__':
         map_ld = populate_ld(ip_list)
         print "Done!"
         print "********************************************\n"
-        exit(0)
 
         # Loop over the files to be scrubbe
         print "##############################"
@@ -891,7 +879,7 @@ if __name__ == '__main__':
 
             # Replace IPs
             stdout.write("\t-> Replacing targeted IPs ... ")
-            replaced_list = replace_ips(input_file, map_ld)
+            replaced_list = replace_ips(input_file)
             print "Done!"
 
             # Create File From Results List
