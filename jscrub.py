@@ -123,7 +123,7 @@ def load_ipmap():
                     pass
     else:
         print "IPMAP FILE: NOT DEFINED"
-        sys.exit(0)
+        exit(0)
         # Print exclude list
         # print "Exclude List: {0}".format(exclude_list)
         # Print include list
@@ -150,7 +150,9 @@ def extract_file_ips(input_files):
     regexs = [ipv4_regex, ipv6_regex]
     # Create list of interesting items
     capture_list = []
+    print ""
     for input_file in input_files:
+        print "\tProcessing File: {0}".format(input_file)
         # Load targeted scrub file into a list
         line_list = txt_to_list(input_file)
         # Check for content using provided regexs
@@ -520,7 +522,8 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
         map_mask = map_ip.prefixlen
 
     octets = ['0', '0', '0', '0']
-    stdout.write(" | Match: {0} | ".format(match))
+    #stdout.write(" | Match: {0} | ".format(match))
+    stdout.write(".")
     # If there's an exact (network) match, we want to make an exact host match (if IP is a host address)
     if match == 'exact' and map_ip:
         # First octet
@@ -676,7 +679,8 @@ def check_net_ld(map_ld, cap_ip):
 def populate_ld(ip_list):
     # Loop over the captured ip list
     for cap_ip in ip_list:
-        stdout.write("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
+        #stdout.write("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
+        stdout.write("|")
         # Check if this IP is IPv6 or IPv4
         if valid_ipv6(str(cap_ip.ip)): is_ipv6 = True
         else: is_ipv6 = False
@@ -693,7 +697,9 @@ def populate_ld(ip_list):
         # Continue this loop until the original IP is matched
         while net_mapping:
             # If the IP is a network address
+            stdout.write(".")
             if is_network:
+                '''
                 # Check the Network database to see if this network exists
                 results = check_net_ld(network_ld, cap_ip)
                 # If the match was exact for IP
@@ -711,6 +717,7 @@ def populate_ld(ip_list):
                 elif results['match'] == "none":
                     # Create a new network address
                     print "\tNetwork None Match!"
+                '''
             # If the IP is NOT a network address
             else:
                 # Check the IP database to see if this host exists
@@ -782,9 +789,10 @@ def populate_ld(ip_list):
                             network_ld.append(new_entry)
                 # If the IP was found...
                 else:
-                    print " .......... {0} -> {1} Complete!".format(cap_ip.ip,  host_results['ip'])
+                    #print " .......... {0} -> {1} Complete!".format(cap_ip.ip,  host_results['ip'])
+                    stdout.write("|")
                     net_mapping = False
-    print "- Popluate Function Complete -"
+    #print "\n- Popluate Function Complete -"
 
 # START OF SCRIPT #
 if __name__ == '__main__':
@@ -866,7 +874,7 @@ if __name__ == '__main__':
         # Create Map List Dictionary
         stdout.write("-> Creating IP mappings ... \n")
         map_ld = populate_ld(ip_list)
-        print "Done!"
+        print "\nDone!"
         print "********************************************\n"
 
         # Loop over the files to be scrubbe
