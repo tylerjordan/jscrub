@@ -124,10 +124,6 @@ def load_ipmap():
     else:
         print "IPMAP FILE: NOT DEFINED"
         exit(0)
-        # Print exclude list
-        # print "Exclude List: {0}".format(exclude_list)
-        # Print include list
-        # print "Textmap List: {0}".format(textmap_list)
 
 
 # Function for extracting the IPs from the input files
