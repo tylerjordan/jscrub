@@ -519,7 +519,7 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
 
     octets = ['0', '0', '0', '0']
     #stdout.write(" | Match: {0} | ".format(match))
-    stdout.write(".")
+    #stdout.write(".")
     # If there's an exact (network) match, we want to make an exact host match (if IP is a host address)
     if match == 'exact' and map_ip:
         # First octet
@@ -676,7 +676,7 @@ def populate_ld(ip_list):
     # Loop over the captured ip list
     for cap_ip in ip_list:
         #stdout.write("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
-        stdout.write("|")
+        stdout.write(".")
         # Check if this IP is IPv6 or IPv4
         if valid_ipv6(str(cap_ip.ip)): is_ipv6 = True
         else: is_ipv6 = False
@@ -693,7 +693,7 @@ def populate_ld(ip_list):
         # Continue this loop until the original IP is matched
         while net_mapping:
             # If the IP is a network address
-            stdout.write(".")
+            #stdout.write(".")
             if is_network:
                 '''
                 # Check the Network database to see if this network exists
@@ -786,7 +786,7 @@ def populate_ld(ip_list):
                 # If the IP was found...
                 else:
                     #print " .......... {0} -> {1} Complete!".format(cap_ip.ip,  host_results['ip'])
-                    stdout.write("|")
+                    #stdout.write("|")
                     net_mapping = False
     #print "\n- Popluate Function Complete -"
 
@@ -831,9 +831,9 @@ if __name__ == '__main__':
         file_list = []
         if os.path.isdir(input_file):
             txt_ext = [".log", ".txt", ".conf"]
-            print "#############"
-            print "# File List #"
-            print "#############"
+            print "#############################"
+            print "# Text Files to be Scrubbed #"
+            print "#############################\n"
             for root, directories, filenames in os.walk(input_file):
                 for directory in directories:
                     # print os.path.join(root, directory)
@@ -849,7 +849,9 @@ if __name__ == '__main__':
             file_list.append(input_file)
 
         # Load the exclude list dictionary
-        print "********************************************"
+        print "\n######################"
+        print "# Create IP Mappings #"
+        print "######################\n"
         stdout.write("-> Loading exclude list dictionary ... ")
         load_ipmap()
         print "Done!"
@@ -860,7 +862,6 @@ if __name__ == '__main__':
         else:
             print "No files defined for scrubbing!"
             exit(0)
-        print "Done!"
 
         # Process the list (remove excluded IPs, sorts, converts to list of dictionaries, removes duplicates)
         stdout.write("-> Processing the IP list ... ")
@@ -868,15 +869,14 @@ if __name__ == '__main__':
         print "Done!"
 
         # Create Map List Dictionary
-        stdout.write("-> Creating IP mappings ... \n")
+        stdout.write("-> Creating IP mappings ")
         map_ld = populate_ld(ip_list)
-        print "\nDone!"
-        print "********************************************\n"
+        print " Done!"
 
         # Loop over the files to be scrubbe
-        print "##############################"
+        print "\n##############################"
         print "# Scrubbing Individual Files #"
-        print "##############################"
+        print "##############################\n"
         for input_file in file_list:
             # Perform Replacement Function
             print "-> Processing file: {0}".format(input_file)
