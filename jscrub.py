@@ -233,56 +233,57 @@ def replace_ips(input_file):
     #pprint(capture_list)
     return capture_list
 
-# Process for sorting the IP list dictionaries
-def sort_ld_value(raw_ld):
-    sorted_ld = []
+# Process for sorting the IP list dictionaries (most specific to least specific)
+def sort_ld_value():
+    global network_ld
+    raw_ld = network_ld
+    network_ld = []
     # Convert list to list of dictionaries
     if raw_ld:
         for raw_dict in raw_ld:
-            #print "IP Entry: {0}".format(dict_ips)
+            print "Unsorted IP: {0}".format(raw_dict['hs_ip'])
             idx = 0
             # If the list has entries already, loop over the list to find the correct slot
-            if sorted_ld:
+            if network_ld:
                 ip_not_added = True
                 # Loop over the ip list
-                for sorted_dict in sorted_ld:
-                    #print "\tidx: {0} List IP: {1}".format(str(idx), list_ip)
-                    # Check if these IPs are the same (different mask)
-                    if raw_dict['hs_ip'].ip != sorted_dict['hs_ip'].ip:
-                        # If the mask is larger than this IP
-                        if raw_dict['hs_ip'].prefixlen >= sorted_dict['hs_ip'].prefixlen:
-                            ip_not_added = False
-                            sorted_ld.insert(idx, raw_dict)
-                            #print "\tAdding New IP: {0}".format(new_ip)
-                            break
-                    # If they are the same IP, choose the IP with the lowest mask
+                for network_dict in network_ld:
+                    print "\tSorted IP: {0} Index: {1}".format(network_dict['hs_ip'], str(idx))
+                    # If the unsorted mask is larger than current sorted mask
+                    if raw_dict['hs_ip'].prefixlen >= network_dict['hs_ip'].prefixlen:
+                        print "\t\tIncoming prefix ({0}) is >= to ({1})".format(raw_dict['hs_ip'].prefixlen,
+                                                                                   network_dict['hs_ip'].prefixlen)
+                        ip_not_added = False
+                        network_ld.insert(idx, raw_dict)
+                        print "\t\t\tAdding Unsorted IP to Index: {0}".format(str(idx))
+                        break
                     else:
-                        #print "\tDuplicate IPs: {0} | {1}".format(raw_dict, sorted_dict)
-                        if raw_dict['hs_ip'].prefixlen < sorted_dict['hs_ip'].prefixlen:
-                            print "\tRemoving existing IP, adding new IP"
-                            sorted_ld.pop(idx)
-                            sorted_ld.insert(idx, raw_dict)
+                        print "\t\tIncoming prefix ({0}) is < ({1})".format(raw_dict['hs_ip'].prefixlen,
+                                                                                   network_dict['hs_ip'].prefixlen)
+                        print "\t\t\tCheck the next IP..."
                     # Increments the index number for list
+                    print "\t[Increment Index]"
                     idx += 1
                 # If the IP wasn't added
                 #print "Passing 'ip_not_added' CHECK"
                 if ip_not_added:
                     #print "Highest Mask in list: {0}".format(raw_dict['hs_ip'].prefixlen)
-                    sorted_ld.append(raw_dict)
+                    network_ld.append(raw_dict)
+                    print "\t\t\tAdding Unsorted IP to end of List"
             # If the list is empty, just add the first IP
             else:
-                #print "Added the first IP"
-                sorted_ld.append(raw_dict)
+                print "Adding Unsorted IP to empty List"
+                network_ld.append(raw_dict)
+
     # No entries to sort
     else:
         #print "\nNo entries to sort."
         pass
     # Sort by mask
     # ld = sorted(ld, key=itemgetter('mask'), reverse=False)
-    #print "\n********* WHOLE LIST **************"
-    #pprint(sorted_ld)
-    # Return
-    return sorted_ld
+    print "\n********* WHOLE LIST **************"
+    pprint(network_ld)
+    print "********* WHOLE LIST **************"
 
 
 # This function sorts a list dictionary by a certain key's value, can also reverse the sort order
@@ -578,11 +579,14 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
                 # Create a random host IP using the chosen network and host range
                 octets[3] = str(randrange(rand_net, ((rand_net + rand_range) - 1)))
             elif cap_oct['octet3']['type'] == 'host':
-                octets[3] = cap_oct['octet3']['val']
+                if cap_mask == 32:
+                    octets[3] = str(randrange(1,254))
+                else:
+                    octets[3] = cap_oct['octet3']['val']
         # Must be a network IP
         # If there's a partial (network) match, we want to make an exact network match
         elif match == 'partial' and map_ip:
-            print "Rand Net: {0}".format(cap_oct['rand_net'])
+            #print "Rand Net: {0}".format(cap_oct['rand_net'])
             # Create the IP...
             # If the captured mask is less than 16 bits, we can use the first octet (8 bits) of the matched IP
             # First octet possibilities...
@@ -659,15 +663,13 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
             for one_dict in network_ld:
                 if one_dict['ls_ip'].ip == new_ip.ip and one_dict['ls_ip'].prefixlen == new_ip.prefixlen:
                     ip_unverified = True
-                    print "Duplicated Network Created! Having another go..."
-                    print "Duplicate: {0} | {1}".format(one_dict['ls_ip'].ip, new_ip.ip)
+                    print "Duplicated Network IP - Existing: {0} | New: {1}/{2}".format(one_dict, new_ip.ip, new_ip.prefixlen)
                     break
         if host_ld:
             for one_dict in host_ld:
                 if one_dict['ls_ip'].ip == new_ip.ip  and one_dict['ls_ip'].prefixlen == new_ip.prefixlen:
                     ip_unverified = True
-                    print "Duplicate Host Created! Having another go..."
-                    print "Duplicate: {0} | {1}".format(one_dict['ls_ip'].ip, new_ip.ip)
+                    print "Duplicate Host IP - Existing: {0} | New: {1}/{2}".format(one_dict, new_ip.ip, new_ip.prefixlen)
                     break
 
     # Combine octets into an IPv4 address
@@ -692,17 +694,15 @@ def check_host_ld(map_ld, cap_ip):
 
 
 # Check if this IP is in the NET mapping dictionary
-def check_net_ld(map_ld, cap_ip):
-    # Sort the list dictionary
-    sorted_ld = sort_ld_value(map_ld)
+def check_net_ld(cap_ip):
     # The dictionary of terms to return
     results = {'match': 'none', 'ip': '', 'net': False}
     # Check if this IP is a network or host IP
     is_network = False
     if cap_ip.ip == cap_ip.network and cap_ip.prefixlen < 32: is_network = True
     # Check for list dictionary and loop over the entries
-    if sorted_ld:
-        for map_net in sorted_ld:
+    if network_ld:
+        for map_net in network_ld:
             # If this is a network IP...
             if is_network:
                 results['net'] = True
@@ -729,6 +729,7 @@ def populate_ld(ip_list):
     # Loop over the captured ip list
     for cap_ip in ip_list:
         print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
+
         #stdout.write(".")
         # Check if this IP is IPv6 or IPv4
         if valid_ipv6(str(cap_ip.ip)): is_ipv6 = True
@@ -745,45 +746,16 @@ def populate_ld(ip_list):
 
         # Continue this loop until the original IP is matched
         while net_mapping:
-            # If the IP is a network address
-            #stdout.write(":")
-            '''
-            if is_network:
-                print "Is Network"
-                # Check the Network database to see if this network exists
-                results = check_net_ld(network_ld, cap_ip)
-                # If the match was exact for a network IP
-                if results['match'] == "exact_all":
-                    print "\tNetwork Exact Match!"
-                    # The mapping already exists for this network IP, leave the loop
-                    print "\tMapping already exists for this IP, skipping..."
-                    net_mapping = False
-                # If the IP is matched, but the netmask is different...
-                elif results['match'] == 'exact_ip':
-                    print "\tNetwork Exact Match (IP only)!"
-                # If the match was from a network with a lower mask
-                elif results['match'] == "partial":
-                    # Create a new network address using the matching address
-                    print "\tNetwork Partial Match!"
-                    #print "LS IP: {0} HS IP: {1}".format(cap_ip.ip, results['ip'])
-                    exit(0)
-                elif results['match'] == "none":
-                    # Create a new network address
-                    print "\tNetwork None Match!"
-                exit(0)
-            # If the IP is NOT a network address
-            else:
-            '''
             # Check the IP database to see if this host exists
             host_results = check_host_ld(host_ld, cap_ip)
             # If the IP was NOT found in the database
             if host_results['match'] == 'none':
 
                 # Check the Network database for a network match
-                net_results = check_net_ld(network_ld, cap_ip)
-                print "Network LD"
-                print "**********"
-                pprint(network_ld)
+                net_results = check_net_ld(cap_ip)
+                #print "Network LD"
+                #print "**********"
+                #pprint(network_ld)
                 print "Matched: {0}".format(net_results['ip'])
                 # If an exact match was made with the net map ...
                 if net_results['match'] == "exact":
@@ -811,13 +783,14 @@ def populate_ld(ip_list):
                         print "\tNew Network Entry: {0} -> {1}".format(cap_ip, new_ip)
                         new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
                         network_ld.append(new_entry)
+                        sort_ld_value()
                     # If this IP is a host ...
                     else:
                         # If this IP is a /32 host ...
                         if cap_ip.prefixlen == 32:
                             print " Matching /32 Host IP"
                             # Create a host address, the first partial match on a /32 will be the closest network match
-                            new_ip = generate_ipv4(cap_ip, net_results['ip'], match='exact')
+                            new_ip = generate_ipv4(cap_ip, net_results['ip'], match='exact_net')
                             # Add this new host IP to the host list dictionary
                             print "\tNew Host Entry: {0} -> {1}".format(cap_ip, new_ip)
                             new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
@@ -839,6 +812,7 @@ def populate_ld(ip_list):
                                 print "\tNew Network Entry: {0} -> {1}".format(netip, new_ip)
                                 new_entry = {"hs_ip": netip, "ls_ip": new_ip}
                                 network_ld.append(new_entry)
+                                sort_ld_value()
 
                 # This should only execute on the first pass when the LD has nothing to match against
                 elif net_results['match'] == "none":
@@ -863,6 +837,7 @@ def populate_ld(ip_list):
                     new_ip = generate_ipv4(IPNetwork(top_net), match='none')
                     new_entry = {"hs_ip": IPNetwork(top_net), "ls_ip": new_ip}
                     network_ld.append(new_entry)
+                    sort_ld_value()
                     #print "Network_LD"
                     #pprint(network_ld)
             # If the IP was found...
@@ -870,7 +845,8 @@ def populate_ld(ip_list):
                 #print " .......... {0} -> {1} Complete!".format(cap_ip.ip,  host_results['ip'])
                 #stdout.write("|")
                 net_mapping = False
-    #print "\n- Popluate Function Complete -"
+    print "\n- Popluate Function Complete -"
+
 
 # START OF SCRIPT #
 if __name__ == '__main__':
