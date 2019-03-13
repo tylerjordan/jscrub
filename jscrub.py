@@ -194,7 +194,7 @@ def extract_file_ips(input_files):
     capture_list = []
     print ""
     for input_file in input_files:
-        print "\tProcessing File: {0}".format(input_file)
+        print "\tProcessing File: {0}".format(ntpath.basename(input_file))
         # Load targeted scrub file into a list
         line_list = txt_to_list(input_file)
         # Check for content using provided regexs
@@ -548,12 +548,45 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
     return new_ip
 
 
+def generate_random_ipv4(cap_oct, octets):
+    # Get first octet
+    if cap_oct['octet0']['type'] == 'net':
+        octets[0] = str(randrange(1, 254))
+    elif cap_oct['octet0']['type'] == 'nethost':
+        octets[0] = cap_oct['rand_net']
+    # print "Oct0: {0}".format(octets[0])
+
+    # Get second octet
+    if cap_oct['octet1']['type'] == 'net':
+        octets[1] = str(randrange(1, 254))
+    elif cap_oct['octet1']['type'] == 'nethost':
+        octets[1] = cap_oct['rand_net']
+    elif cap_oct['octet1']['type'] == 'host':
+        octets[1] = '0'
+
+    # Get third octet
+    if cap_oct['octet2']['type'] == 'net':
+        octets[2] = str(randrange(1, 254))
+    elif cap_oct['octet2']['type'] == 'nethost':
+        octets[2] = cap_oct['rand_net']
+    elif cap_oct['octet2']['type'] == 'host':
+        octets[2] = '0'
+
+    # Get fourth octet
+    if cap_oct['octet3']['type'] == 'nethost':
+        octets[3] = cap_oct['rand_net']
+    elif cap_oct['octet3']['type'] == 'host':
+        octets[3] = '0'
+
+    return octets
+
 # If a network is provided, the network portion of the IP address will be used.
 # cap_ip: The IP from the text document in it's non-scrubbed form
 # map_ip: The IP from the map database, the LS IP
 def generate_ipv4(cap_ip, map_ip='', match='none'):
     #print "\n***** Arguments Provided *****"
     ip_unverified = True
+    dup_count = 0
 
     octets = ['0', '0', '0', '0']
     #stdout.write(" | Match: {0} | ".format(match))
@@ -672,55 +705,37 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
         # If no match has been made, we want to make a general network match...
         # This creates the inital network for the match to build on.
         else:
-            # Get first octet
-            if cap_oct['octet0']['type'] == 'net':
-                octets[0] = str(randrange(1, 254))
-            elif cap_oct['octet0']['type'] == 'nethost':
-                octets[0] = cap_oct['rand_net']
-            #print "Oct0: {0}".format(octets[0])
-
-            # Get second octet
-            if cap_oct['octet1']['type'] == 'net':
-                octets[1] = str(randrange(1,254))
-            elif cap_oct['octet1']['type'] == 'nethost':
-                octets[1] = cap_oct['rand_net']
-            elif cap_oct['octet1']['type'] == 'host':
-                    octets[1] = '0'
-
-            # Get third octet
-            if cap_oct['octet2']['type'] == 'net':
-                octets[2] = str(randrange(1,254))
-            elif cap_oct['octet2']['type'] == 'nethost':
-                octets[2] = cap_oct['rand_net']
-            elif cap_oct['octet2']['type'] == 'host':
-                octets[2] = '0'
-
-            # Get fourth octet
-            if cap_oct['octet3']['type'] == 'nethost':
-                octets[3] = cap_oct['rand_net']
-            elif cap_oct['octet3']['type'] == 'host':
-                octets[3] = '0'
+            octets = generate_random_ipv4(cap_oct, octets)
 
         # Combine octets into an IPv4 address
-        new_ip = IPNetwork(".".join(octets) + "/" + str(cap_mask))
+        try:
+            new_ip = IPNetwork(".".join(octets) + "/" + str(cap_mask))
+        except Exception as err:
+            ip_unverified = True
+        # If IP format is valid
+        else:
+            # If there has been 5 duplicates, create a random network IP
+            if dup_count == 10:
+                octets = generate_random_ipv4(cap_oct, octets)
+                new_ip = IPNetwork(".".join(octets) + "/" + str(cap_mask))
+                print "\nDuplicate Error, Created Random Mapping - {0} | New IP: {1}".format(one_dict, new_ip)
+                ip_unverified = False
 
-        # Check network_ld for duplicates
-        if network_ld:
-            for one_dict in network_ld:
-                if one_dict['ls_ip'].ip == new_ip.ip and one_dict['ls_ip'].prefixlen == new_ip.prefixlen:
-                    ip_unverified = True
-                    #print "Duplicated Network IP - Existing: {0} | New: {1}/{2}".format(one_dict, new_ip.ip, new_ip.prefixlen)
-                    break
-        # Check host_ld for duplicates
-        if host_ld:
-            for one_dict in host_ld:
-                if one_dict['ls_ip'].ip == new_ip.ip  and one_dict['ls_ip'].prefixlen == new_ip.prefixlen:
-                    ip_unverified = True
-                    #print "Duplicate Host IP - Existing: {0} | New: {1}/{2}".format(one_dict, new_ip.ip, new_ip.prefixlen)
-                    break
-
-    # Combine octets into an IPv4 address
-    #print "\tNew IP: {0}".format(new_ip)
+            # Check network_ld for duplicates
+            if network_ld:
+                for one_dict in network_ld:
+                    if one_dict['ls_ip'].ip == new_ip.ip and one_dict['ls_ip'].prefixlen == new_ip.prefixlen:
+                        ip_unverified = True
+                        #print "Duplicated Network IP - Existing: {0} | New: {1}/{2}".format(one_dict, new_ip.ip, new_ip.prefixlen)
+                        dup_count += 1
+                        break
+            # Check host_ld for duplicates
+            if host_ld:
+                for one_dict in host_ld:
+                    if one_dict['ls_ip'].ip == new_ip.ip  and one_dict['ls_ip'].prefixlen == new_ip.prefixlen:
+                        ip_unverified = True
+                        #print "Duplicate Host IP - Existing: {0} | New: {1}/{2}".format(one_dict, new_ip.ip, new_ip.prefixlen)
+                        break
 
     # Return the newly created IP
     return new_ip
@@ -951,6 +966,7 @@ if __name__ == '__main__':
         # Run this if argument is a file
         else:
             file_list.append(input_file)
+            print "- {0}".format(ntpath.basename(input_file))
 
         if not getTFAnswer("Continue with scrubbing these files"):
             print "Exiting Scrubbing Utility..."
@@ -987,7 +1003,7 @@ if __name__ == '__main__':
         print "##############################\n"
         for input_file in file_list:
             # Perform Replacement Function
-            print "-> Processing file: {0}".format(input_file)
+            print "-> Processing file: {0}".format(ntpath.basename(input_file))
 
             # Replace IPs
             stdout.write("\t-> Replacing targeted IPs ... ")
@@ -1004,10 +1020,8 @@ if __name__ == '__main__':
                 print "Failed: Conversion to text file failed!".format(myfile)
     except KeyboardInterrupt:
         print 'Exiting...'
-        try:
-            exit(0)
-        except SystemExit:
-            _exit(0)
+        exit(0)
+
     else:
         print "\n############################"
         print "# Completed Scrubbing Task #"
