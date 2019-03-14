@@ -927,13 +927,6 @@ if __name__ == '__main__':
     input_file = os.path.join(dir_path, args.input_file)
     ipmap_file = os.path.join(dir_path, args.ipmap_file)
 
-    # IPMAP List Dictionary
-    # - IPs will have IP address and mask
-    # - Sorted least specific to most specific IP
-    # src_ip,dest_ip
-    # 10.10.10.0/24,20.20.20.0/24
-    # 10.10.10.1/32,20.20.20.1/32
-
     # Main Program Loop
     print "********************************************"
     print "*       ASCII File Scrubbing Utility       *"
