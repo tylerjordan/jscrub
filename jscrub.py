@@ -174,12 +174,13 @@ def load_ipmap():
 # Function for extracting the IPs from the input files
 def extract_file_ips(input_files):
     # Regexs
-    # This IPv4 expression will match an IP and masks from /8 to /32
+    # This IPv4 expression will match an IP and masks from /8 to /32.
+    # If the mask is more than 2 digits long, it will only match the IP octets. "(?!\d)"
     ipv4_regex = re.compile("([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                             "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                             "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
                             "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                            "(\/([8]|[9]|1[0-9]|2[0-9]|3[0-2]))?")
+                            "(\/([8]|[9]|1[0-9]|2[0-9]|3[0-2]))?(?!\d)")
     ipv6_regex = re.compile("(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:)"
                             "{1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:)"
                             "{1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4})"
