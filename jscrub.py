@@ -238,11 +238,17 @@ def replace_ips(input_file):
     capture_list = []
     # Load targeted scrub file into a list
     line_list = txt_to_list(input_file)
+    # Sort the host_ld
+    sort_host_ld()
     # Check for content using provided regexs
     # print "Starting scan of {0}:".format(input_file)
     if line_list:
+        line_count = 0
+        #print "File: {0} | Lines: {1}".format(input_file, str(len(line_list)))
         # Loop over list of lines
         for line in line_list:
+            line_count += 1
+            #print "\tLine: {0}".format(line_count)
             new_line = ''
             not_matched = True
             # Loop over textmap
@@ -259,7 +265,6 @@ def replace_ips(input_file):
                     not_matched = False
                     line = new_line
             # Loop over the host replacement list dictionary
-            sort_host_ld()
             for host_d in host_ld:
                 if str(host_d['hs_ip'].ip) in line:
                     new_line = re.sub(str(host_d['hs_ip'].ip), str(host_d['ls_ip'].ip), line)
@@ -337,8 +342,10 @@ def sort_host_ld():
     global host_ld
     raw_ld = host_ld
     host_ld = []
+    #print "*****************************************"
     # Convert list to list of dictionaries
     if raw_ld:
+        #pprint(raw_ld)
         for raw_dict in raw_ld:
             #print "Unsorted IP: {0}".format(raw_dict['hs_ip'])
             idx = 0
@@ -347,11 +354,12 @@ def sort_host_ld():
                 ip_not_added = True
                 # Loop over the ip list
                 for host_dict in host_ld:
+                    raw_len = octet_4_len(raw_dict['hs_ip'])
+                    host_len = octet_4_len(host_dict['hs_ip'])
                     #print "\tSorted IP: {0} Index: {1}".format(network_dict['hs_ip'], str(idx))
                     # If 4th octet of the incoming prefix is greater than or equal to this IP, insert it
-                    if octet_4_len(raw_dict['hs_ip']) >= octet_4_len(host_dict['hs_ip']):
-                        #print "\t\tIncoming prefix ({0}) is >= to ({1})".format(raw_dict['hs_ip'].prefixlen,
-                        #                                                           network_dict['hs_ip'].prefixlen)
+                    if raw_len >= host_len:
+                        #print "\t\tIncoming ip ({0}) is >= to ({1})".format(raw_len, host_len)
                         ip_not_added = False
                         host_ld.insert(idx, raw_dict)
                         #print "\t\t\tAdding Unsorted IP to Index: {0}".format(str(idx))
@@ -368,6 +376,7 @@ def sort_host_ld():
             else:
                 #print "Adding Unsorted IP to empty List"
                 host_ld.append(raw_dict)
+        #exit(0)
     # No entries to sort
     else:
         #print "\nNo entries to sort."
@@ -1053,9 +1062,9 @@ if __name__ == '__main__':
             stdout.write("\t-> Replacing targeted IPs ... ")
             replaced_list = replace_ips(input_file)
             print "Done!"
-            pprint(network_ld)
-            print "HOSTS:"
-            pprint(host_ld)
+            #pprint(network_ld)
+            #print "HOSTS:"
+            #pprint(host_ld)
 
             # Create File From Results List
             orig_filename = ntpath.basename(input_file)
