@@ -176,15 +176,9 @@ def extract_file_ips(input_files):
     # Regexs
     # This IPv4 expression will match an IP and masks from /8 to /32.
     # If the mask is more than 2 digits long, it will only match the IP octets. "(?!\d)"
-    ipv4_regex = re.compile("(([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])\.){3}"
-                            "([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                            "(\/([8]|[9]|1[0-9]|2[0-9]|3[0-2]))?(?!\d)")
-
-    ipv4_regex_old = re.compile("([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                            "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                            "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                            "\.([1][0-9][0-9]|[2][5][0-5]|[2][0-4][0-9]|[1][0-9][0-9]|[0-9][0-9]|[0-9])"
-                            "(\/([8]|[9]|1[0-9]|2[0-9]|3[0-2]))?(?!\d)")
+    ipv4_regex = re.compile("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}"
+                            "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])"
+                            "(\/(8|9|1[0-9]|2[0-9]|3[0-2]))?(?!\d)")
 
     ipv6_regex = re.compile("(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:)"
                             "{1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:)"
@@ -195,6 +189,7 @@ def extract_file_ips(input_files):
                             "{?}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{?}[0-9]){?}[0-9])|([0-9a-fA-F]{1,4}:)"
                             "{1,4}:((25[0-5]|(2[0-4]|1{?}[0-9]){?}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{?}[0-9])"
                             "{?}[0-9]))(\/([1][0-1][0-9]|[1][2][0-8]|[0-9][0-9]))?")
+
     regexs = [ipv4_regex, ipv6_regex]
     # Create list of interesting items
     capture_list = []
@@ -264,6 +259,7 @@ def replace_ips(input_file):
                     not_matched = False
                     line = new_line
             # Loop over the host replacement list dictionary
+            sort_host_ld()
             for host_d in host_ld:
                 if str(host_d['hs_ip'].ip) in line:
                     new_line = re.sub(str(host_d['hs_ip'].ip), str(host_d['ls_ip'].ip), line)
@@ -292,7 +288,7 @@ def replace_ips(input_file):
     return capture_list
 
 # Process for sorting the IP list dictionaries (most specific to least specific)
-def sort_ld_value():
+def sort_network_ld():
     global network_ld
     raw_ld = network_ld
     network_ld = []
@@ -333,9 +329,58 @@ def sort_ld_value():
         pass
     # Sort by mask
     # ld = sorted(ld, key=itemgetter('mask'), reverse=False)
-    #print "\n********* WHOLE LIST **************"
-    #pprint(network_ld)
-    #print "********* WHOLE LIST **************"
+
+
+# Process for sorting the IP list dictionaries (most specific to least specific)
+# Secondarily sorts fourth octet preferring higher digit octet numbers 3 > 2 > 1
+def sort_host_ld():
+    global host_ld
+    raw_ld = host_ld
+    host_ld = []
+    # Convert list to list of dictionaries
+    if raw_ld:
+        for raw_dict in raw_ld:
+            #print "Unsorted IP: {0}".format(raw_dict['hs_ip'])
+            idx = 0
+            # If the list has entries already, loop over the list to find the correct slot
+            if host_ld:
+                ip_not_added = True
+                # Loop over the ip list
+                for host_dict in host_ld:
+                    #print "\tSorted IP: {0} Index: {1}".format(network_dict['hs_ip'], str(idx))
+                    # If 4th octet of the incoming prefix is greater than or equal to this IP, insert it
+                    if octet_4_len(raw_dict['hs_ip']) >= octet_4_len(host_dict['hs_ip']):
+                        #print "\t\tIncoming prefix ({0}) is >= to ({1})".format(raw_dict['hs_ip'].prefixlen,
+                        #                                                           network_dict['hs_ip'].prefixlen)
+                        ip_not_added = False
+                        host_ld.insert(idx, raw_dict)
+                        #print "\t\t\tAdding Unsorted IP to Index: {0}".format(str(idx))
+                        break
+                    # Increments the index number for list
+                    #print "\t[Increment Index]"
+                    idx += 1
+                # If the IP wasn't added, usually because its mask is smaller than the rest of IPs
+                if ip_not_added:
+                    #print "Highest Mask in list: {0}".format(raw_dict['hs_ip'].prefixlen)
+                    host_ld.append(raw_dict)
+                    #print "\t\t\tAdding Unsorted IP to end of List"
+            # If the list is empty, just add the first IP
+            else:
+                #print "Adding Unsorted IP to empty List"
+                host_ld.append(raw_dict)
+    # No entries to sort
+    else:
+        #print "\nNo entries to sort."
+        pass
+    # Sort by mask
+    # ld = sorted(ld, key=itemgetter('mask'), reverse=False)
+
+# Get the length of the fourth octet for the sort mechanism
+def octet_4_len(ip_net):
+    # Get the fourth octet out of this IP
+    octets = str(ip_net.ip).split(".")
+    # Return the length of the fourth octet
+    return int(len(octets[3]))
 
 
 # This function sorts a list dictionary by a certain key's value, can also reverse the sort order
@@ -851,7 +896,7 @@ def populate_ld(ip_list):
                         #print "\tNew Network Entry: {0} -> {1}".format(cap_ip, new_ip)
                         new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
                         network_ld.append(new_entry)
-                        sort_ld_value()
+                        sort_network_ld()
                     # If this IP is a host ...
                     else:
                         # If this IP is a /32 host ...
@@ -880,7 +925,7 @@ def populate_ld(ip_list):
                                 #print "\tNew Network Entry: {0} -> {1}".format(netip, new_ip)
                                 new_entry = {"hs_ip": netip, "ls_ip": new_ip}
                                 network_ld.append(new_entry)
-                                sort_ld_value()
+                                sort_network_ld()
 
                 # This should only execute on the first pass when the LD has nothing to match against
                 elif net_results['match'] == "none":
@@ -905,7 +950,7 @@ def populate_ld(ip_list):
                     new_ip = generate_ipv4(IPNetwork(top_net), match='none')
                     new_entry = {"hs_ip": IPNetwork(top_net), "ls_ip": new_ip}
                     network_ld.append(new_entry)
-                    sort_ld_value()
+                    sort_network_ld()
                     #print "Network_LD"
                     #pprint(network_ld)
             # If the IP was found...
@@ -995,9 +1040,6 @@ if __name__ == '__main__':
         stdout.write("-> Creating IP mappings ")
         map_ld = populate_ld(ip_list)
         print " Done!"
-        pprint(network_ld)
-        print "HOSTS:"
-        pprint(host_ld)
 
         # Loop over the files to be scrubbe
         print "\n##############################"
@@ -1011,6 +1053,9 @@ if __name__ == '__main__':
             stdout.write("\t-> Replacing targeted IPs ... ")
             replaced_list = replace_ips(input_file)
             print "Done!"
+            pprint(network_ld)
+            print "HOSTS:"
+            pprint(host_ld)
 
             # Create File From Results List
             orig_filename = ntpath.basename(input_file)
