@@ -869,104 +869,110 @@ def populate_ld(ip_list):
         while net_mapping:
             # Check the IP database to see if this host exists
             host_results = check_host_ld(host_ld, cap_ip)
-            # If the IP was NOT found in the database
-            if host_results['match'] == 'none':
+            # Check if this IP is a IPv6 address
+            if is_ipv6:
+                new_ip = generate_ipv6(cap_ip, )
+                pass
+            # Otherwise, its an IPv4 address
+            else:
+                # If the IP was NOT found in the database
+                if host_results['match'] == 'none':
 
-                # Check the Network database for a network match
-                net_results = check_net_ld(cap_ip)
-                #print "Network LD"
-                #print "**********"
-                #pprint(network_ld)
-                #print "Matched: {0}".format(net_results['ip'])
-                # If an exact match was made with the net map ...
-                if net_results['match'] == "exact":
-                    #stdout.write("-> Network Exact Match -> ")
-                    # If this IP is a network...
-                    if net_results['net']:
-                        #print " Matching Network IP"
-                        #print "\tNo New Entry Needed!!!"
-                        net_mapping = False
-                    # If this IP is a host and this network is the correct network
-                    else:
-                        #print " Matching Host IP"
-                        new_ip = generate_ipv4(cap_ip, net_results['ip'], match='exact_net')
-                        #print "\tNew Host Entry: {0} -> {1}".format(cap_ip, new_ip)
-                        new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
-                        host_ld.append(new_entry)
-
-                # If a partial match was made with the net map ...
-                elif net_results['match'] == "partial":
-                    #stdout.write("-> Network Partial Match -> ")
-                    # If this IP is a network ...
-                    if net_results['net'] and cap_ip.prefixlen < 32:
-                        #print " Matching Network IP"
-                        new_ip = generate_ipv4(cap_ip, net_results['ip'], match='partial')
-                        #print "\tNew Network Entry: {0} -> {1}".format(cap_ip, new_ip)
-                        new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
-                        network_ld.append(new_entry)
-                        sort_network_ld()
-                    # If this IP is a host ...
-                    else:
-                        # If this IP is a /32 host ...
-                        if cap_ip.prefixlen == 32:
-                            #print " Matching /32 Host IP"
-                            # Create a host address, the first partial match on a /32 will be the closest network match
+                    # Check the Network database for a network match
+                    net_results = check_net_ld(cap_ip)
+                    #print "Network LD"
+                    #print "**********"
+                    #pprint(network_ld)
+                    #print "Matched: {0}".format(net_results['ip'])
+                    # If an exact match was made with the net map ...
+                    if net_results['match'] == "exact":
+                        #stdout.write("-> Network Exact Match -> ")
+                        # If this IP is a network...
+                        if net_results['net']:
+                            #print " Matching Network IP"
+                            #print "\tNo New Entry Needed!!!"
+                            net_mapping = False
+                        # If this IP is a host and this network is the correct network
+                        else:
+                            #print " Matching Host IP"
                             new_ip = generate_ipv4(cap_ip, net_results['ip'], match='exact_net')
-                            # Add this new host IP to the host list dictionary
                             #print "\tNew Host Entry: {0} -> {1}".format(cap_ip, new_ip)
                             new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
                             host_ld.append(new_entry)
-                        # If this IP is a non-/32 host ...
-                        else:
-                            #print " Matching Non/32 Host IP"
-                            # Create a new network address using the matching address
+
+                    # If a partial match was made with the net map ...
+                    elif net_results['match'] == "partial":
+                        #stdout.write("-> Network Partial Match -> ")
+                        # If this IP is a network ...
+                        if net_results['net'] and cap_ip.prefixlen < 32:
+                            #print " Matching Network IP"
                             new_ip = generate_ipv4(cap_ip, net_results['ip'], match='partial')
-                            # Check if this IP is a new network or a host ...
-                            if new_ip.prefixlen == cap_ip.prefixlen and new_ip.network != new_ip.ip:
+                            #print "\tNew Network Entry: {0} -> {1}".format(cap_ip, new_ip)
+                            new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
+                            network_ld.append(new_entry)
+                            sort_network_ld()
+                        # If this IP is a host ...
+                        else:
+                            # If this IP is a /32 host ...
+                            if cap_ip.prefixlen == 32:
+                                #print " Matching /32 Host IP"
+                                # Create a host address, the first partial match on a /32 will be the closest network match
+                                new_ip = generate_ipv4(cap_ip, net_results['ip'], match='exact_net')
+                                # Add this new host IP to the host list dictionary
                                 #print "\tNew Host Entry: {0} -> {1}".format(cap_ip, new_ip)
                                 new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
                                 host_ld.append(new_entry)
-                            # Otherwise, this is a partial match still...
+                            # If this IP is a non-/32 host ...
                             else:
-                                masked_ip = str(cap_ip.network) + "/" + str(cap_ip.prefixlen)
-                                netip = IPNetwork(masked_ip)
-                                #print "\tNew Network Entry: {0} -> {1}".format(netip, new_ip)
-                                new_entry = {"hs_ip": netip, "ls_ip": new_ip}
-                                network_ld.append(new_entry)
-                                sort_network_ld()
+                                #print " Matching Non/32 Host IP"
+                                # Create a new network address using the matching address
+                                new_ip = generate_ipv4(cap_ip, net_results['ip'], match='partial')
+                                # Check if this IP is a new network or a host ...
+                                if new_ip.prefixlen == cap_ip.prefixlen and new_ip.network != new_ip.ip:
+                                    #print "\tNew Host Entry: {0} -> {1}".format(cap_ip, new_ip)
+                                    new_entry = {"hs_ip": cap_ip, "ls_ip": new_ip}
+                                    host_ld.append(new_entry)
+                                # Otherwise, this is a partial match still...
+                                else:
+                                    masked_ip = str(cap_ip.network) + "/" + str(cap_ip.prefixlen)
+                                    netip = IPNetwork(masked_ip)
+                                    #print "\tNew Network Entry: {0} -> {1}".format(netip, new_ip)
+                                    new_entry = {"hs_ip": netip, "ls_ip": new_ip}
+                                    network_ld.append(new_entry)
+                                    sort_network_ld()
 
-                # This should only execute on the first pass when the LD has nothing to match against
-                elif net_results['match'] == "none":
-                    #print "\tHost None Match!"
-                    # Create a new network address with the nearest classful address
-                    new_ip = ''
-                    top_net = "0.0.0.0/0"
-                    octets = str(cap_ip.ip).split('.')
-                    if cap_ip.prefixlen < 16:
-                        #print "\tCreating a Class A Network!"
-                        # Create a /8 network for this IP
-                        top_net = octets[0] + ".0.0.0/8"
-                    elif cap_ip.prefixlen < 24:
-                        #print "\tCreating a Class B Network!"
-                        # Create a /16 network for this IP
-                        top_net = octets[0] + "." + octets[1] + ".0.0/16"
-                    else:
-                        #print "\tCreating a Class C Network!"
-                        # Create a /24 network for any other IPs
-                        top_net = octets[0] + "." + octets[1] + "." + octets[2] + ".0/24"
-                    # Generate the new mapping
-                    new_ip = generate_ipv4(IPNetwork(top_net), match='none')
-                    new_entry = {"hs_ip": IPNetwork(top_net), "ls_ip": new_ip}
-                    network_ld.append(new_entry)
-                    sort_network_ld()
-                    #print "Network_LD"
-                    #pprint(network_ld)
-            # If the IP was found...
-            elif host_results['match'] == 'exact':
-                #print " .......... {0} -> {1} Complete!".format(cap_ip.ip,  host_results['ip'])
-                #stdout.write("|")
-                net_mapping = False
-    #print "\n- Popluate Function Complete -"
+                    # This should only execute on the first pass when the LD has nothing to match against
+                    elif net_results['match'] == "none":
+                        #print "\tHost None Match!"
+                        # Create a new network address with the nearest classful address
+                        new_ip = ''
+                        top_net = "0.0.0.0/0"
+                        octets = str(cap_ip.ip).split('.')
+                        if cap_ip.prefixlen < 16:
+                            #print "\tCreating a Class A Network!"
+                            # Create a /8 network for this IP
+                            top_net = octets[0] + ".0.0.0/8"
+                        elif cap_ip.prefixlen < 24:
+                            #print "\tCreating a Class B Network!"
+                            # Create a /16 network for this IP
+                            top_net = octets[0] + "." + octets[1] + ".0.0/16"
+                        else:
+                            #print "\tCreating a Class C Network!"
+                            # Create a /24 network for any other IPs
+                            top_net = octets[0] + "." + octets[1] + "." + octets[2] + ".0/24"
+                        # Generate the new mapping
+                        new_ip = generate_ipv4(IPNetwork(top_net), match='none')
+                        new_entry = {"hs_ip": IPNetwork(top_net), "ls_ip": new_ip}
+                        network_ld.append(new_entry)
+                        sort_network_ld()
+                        #print "Network_LD"
+                        #pprint(network_ld)
+                # If the IP was found...
+                elif host_results['match'] == 'exact':
+                    #print " .......... {0} -> {1} Complete!".format(cap_ip.ip,  host_results['ip'])
+                    #stdout.write("|")
+                    net_mapping = False
+        #print "\n- Popluate Function Complete -"
 
 # START OF SCRIPT #
 if __name__ == '__main__':
