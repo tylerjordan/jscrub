@@ -852,7 +852,6 @@ def populate_ld(ip_list):
     for cap_ip in ip_list:
         #print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
 
-        stdout.write(".")
         # Check if this IP is IPv6 or IPv4
         if valid_ipv6(str(cap_ip.ip)): is_ipv6 = True
         else: is_ipv6 = False
