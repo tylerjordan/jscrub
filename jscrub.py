@@ -18,6 +18,7 @@ from netaddr import IPNetwork, valid_ipv6
 # Global Variables
 host_ld = []
 network_ld = []
+ipv6_ld = []
 
 # Global Lists
 textmap_list = []
@@ -278,6 +279,13 @@ def replace_ips(input_file):
                     # print "\tReplacing: {0} with {1}".format(map_d['hs_ip'], map_d['ls_ip'])
                     not_matched = False
                     line = new_line
+            # Loop over the ipv6 replacement list dictionary
+            for ipv6_d in ipv6_ld:
+                if str(ipv6_d['hs_ip'].ip) in line:
+                    new_line = re.sub(str(ipv6_d['hs_ip'].ip), str(ipv6_d['ls_ip'].ip), line)
+                    # print "\tReplacing: {0} with {1}".format(map_d['hs_ip'], map_d['ls_ip'])
+                    not_matched = False
+                    line = new_line
             # If there were no IPs or replacments in the file, this will execute
             if not_matched:
                 new_line = line
@@ -401,6 +409,8 @@ def process_capture_list(capture_list):
 
     # Convert list to list of dictionaries
     for raw_ip in filtered_list:
+        # Add IPv6 content somewhere in here
+
         new_ip = IPNetwork(raw_ip)
         #print "New IP: {0}".format(new_ip)
         idx = 0
@@ -556,15 +566,16 @@ def frm(x, b):
 # 3a. If octet is "ffff", keep it that way
 # 4. apply to mapping ld
 # - If "::"s are NOT found, break out all octets (using split on ":")
-def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
-    print "Old IP: {0} | Mask: {1}".format(hs_ip, hs_mask)
+def generate_ipv6(cap_ip):
+    print "Old IP: {0} | Mask: {1}".format(cap_ip.ip, cap_ip.prefixlen)
     new_ip = ""
     new_octet = ""
     first_loop = True
+
     # Check for double octet
-    if "::" in hs_ip:
+    if "::" in str(cap_ip.ip):
         # Format IP
-        double_octet = re.split("::", hs_ip)
+        double_octet = re.split("::", str(cap_ip.ip))
         first_part = double_octet[0].split(":")
         second_part = double_octet[1].split(":")
         # Loop over first group of IP fragments
@@ -579,7 +590,7 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
                 new_octet = "ffff"
             new_ip += new_octet
         # Loop over second group of IP fragments
-        new_ip += "::"
+        new_ip += ":"
         for octet in second_part:
             if not first_loop:
                 new_ip += ":"
@@ -592,7 +603,7 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
             new_ip += new_octet
     # If no double octet, do a standard replace
     else:
-        octets = hs_ip.split(":")
+        octets = str(cap_ip.ip).split(":")
         for octet in octets:
             if not first_loop:
                 new_ip += ":"
@@ -603,9 +614,11 @@ def generate_ipv6(hs_ip, hs_mask, map_ld=[]):
             else:
                 new_octet = "ffff"
             new_ip += new_octet
-    print "New IP: {0} | Mask: {1}".format(new_ip, hs_mask)
+    print "New IP: {0} | Mask: {1}".format(new_ip, cap_ip.prefixlen)
+    my_ip = IPNetwork(new_ip + "/" + str(cap_ip.prefixlen))
+    print "My IP: {0}".format(my_ip)
     # Return the created IP
-    return new_ip
+    return my_ip
 
 
 def generate_random_ipv4(cap_oct, octets):
@@ -802,15 +815,15 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
 
 
 # Check if this IP is in the IP mapping dictionary
-def check_host_ld(map_ld, cap_ip):
+def check_host_ld(cap_ip):
     results = {'match': 'none', 'ip': ''}
-    if map_ld:
-        for map_ip in map_ld:
+    if host_ld:
+        for host_ip in host_ld:
             # Check for an exact match of IPs
-            if cap_ip.ip == map_ip['hs_ip'].ip:
+            if cap_ip.ip == host_ip['hs_ip'].ip:
                 #print "Exact Host Match: {0} matches {1}".format(cap_ip.ip, map_ip['hs_ip'].ip)
                 results['match'] = 'exact'
-                results['ip'] = map_ip['ls_ip']
+                results['ip'] = host_ip['ls_ip']
                 break
     return results
 
@@ -851,28 +864,23 @@ def populate_ld(ip_list):
     # Loop over the captured ip list
     for cap_ip in ip_list:
         #print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
-
         # Check if this IP is IPv6 or IPv4
         if valid_ipv6(str(cap_ip.ip)): is_ipv6 = True
         else: is_ipv6 = False
 
-        # Check if this is a host or network address
-        #if cap_ip.ip == cap_ip.network and cap_ip.prefixlen < 32: is_network = True
-        #else: is_network = False
-
         # Check if this IP is in the IP mapping dictionary
-        exact_match = False
-        net_match = False
         net_mapping = True
 
         # Continue this loop until the original IP is matched
         while net_mapping:
             # Check the IP database to see if this host exists
-            host_results = check_host_ld(host_ld, cap_ip)
+            host_results = check_host_ld(cap_ip)
             # Check if this IP is a IPv6 address
             if is_ipv6:
-                new_ip = generate_ipv6(cap_ip, )
-                pass
+                new_ip = generate_ipv6(cap_ip)
+                net_mapping = False
+                new_entry = {'hs_ip': cap_ip, 'ls_ip': new_ip}
+                ipv6_ld.append(new_entry)
             # Otherwise, its an IPv4 address
             else:
                 # If the IP was NOT found in the database
