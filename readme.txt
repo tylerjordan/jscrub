@@ -2,13 +2,19 @@ Program: jscrub.py
 Author: Tyler Jordan (tjordan@juniper.net)
 Python: 2.7
 Python Library Requirements: argparse, ntpath, netaddr
-Tested Platforms: Windows/Linux/JunOS (running 16.1) 
+Tested Platforms: Windows/Linux/JunOS (running 16.1)
 
-Description: A python program that can scrub text-based files, such as logs or configurations. The scrubbing is capable of scrubbing IPv4/v6 addresses, password hashes, other regex terms, and keywords. The IPv4 replacement creates a random replacement, but attempts to maintain the consistency of the file. The IPv6 replacement performs a random replacement.
+File Structure:
+jscrub.py  --> the Python script 
+readme.txt --> this readme file
+ipmap.txt  --> the file that controls excluded text, text-mappings, and text-regexs
+[scrubbed_files]  --> the directory where scrubbed files will be placed
 
-Target: The target of this program is to scrub text file, logs, and configurations that contain classified information, rendering them unclassified and capable of further troubleshooting by unclassified people.
+Description: A python program that can scrub text-based files, such as logs or configurations. The scrubber is capable of scrubbing IPv4/v6 addresses, password hashes, other regex terms, and keywords. It replaces IPv4 formatted addresses with random addressing, but attempts to maintain the consistency of the file. The IPv6 replacement performs a random replacement. It can replace specific text strings with defined replacements and, using regular expressions, perform replacements of text strings that match a regular expression. 
 
-Recursive Scrub: The program will scan a directory structure recursively and process any files with ".log", ".txt", and ".conf" file extensions. Additional extensions can be added as needed. The program does not modify the actual classified files. The scrubbed contents is placed in a file by the same name with a "[SCRUB]-" prefix.
+Single File Scrub: The program can scrub a single file placed in the root of the script directory. It can scrub any ASCII plain-text files with ".log", ".txt", and ".conf" extensions. It can be easily modified for other extensions as well. The program does not modified the supplied files, but creates new "scrubbed" files in the directory "scrubbed_files". A "[SCRUB]-" prefix is added to files to denote that they have been scrubbed.  
+
+Recursive Scrub: The program can also scan a directory structure recursively and scrub files. It will drill down into a directory structure and attempt to scrub any files with the appoproiate file extensions.
 
 How To Use:
 
