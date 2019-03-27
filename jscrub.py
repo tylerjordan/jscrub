@@ -1066,23 +1066,39 @@ if __name__ == '__main__':
     except Exception as err:
         print "Problem detecting OS type..."
         quit()
+
     # Argument Parser
     # User will either provide an input_file or a folder structure to walk through and scrub all text-based files.
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', action='store', dest='input_file', help='input file or folder')
-    parser.add_argument('-i', action='store', dest='ipmap_file', help='ipmap support file')
+    parser.add_argument('-s', action='store', dest='input_file', help='input file or folder', required=True)
+    parser.add_argument('-i', action='store', dest='ipmap_file', help='ipmap support file', required=True)
     args = parser.parse_args()
 
     # Input arguments
     input_file = os.path.join(dir_path, args.input_file)
     ipmap_file = os.path.join(dir_path, args.ipmap_file)
 
+    # Check that the arguments are valid...
+    # Check that the IPMAP file exists
+    if not os.path.isfile(ipmap_file):
+        print "ERROR: IPMAP File: [{0}] - Does Not Exist!".format(ipmap_file)
+        exit(0)
+    # Check if the input_file exists and is a file or directory
+    if os.path.isfile(input_file):
+        input_file_display = " Input File: {0}".format(input_file)
+    elif os.path.isdir(input_file):
+        input_file_display = " Input Directory: {0}".format(input_file)
+    else:
+        print "ERROR: Input File: [{0}] - Is not a valid File or Directory!".format(input_file)
+        exit(0)
+
     # Main Program Loop
     print "********************************************"
+    print "*                JSCRUB                    *"
     print "*       ASCII File Scrubbing Utility       *"
     print "********************************************"
-    print " Input File: {0}".format(input_file)
-    print " IPMap File: {0}".format(ipmap_file)
+    print input_file_display
+    print " IPMAP File: {0}".format(ipmap_file)
     print "********************************************"
     print "##############################"
     print "# Starting Main Program Loop #"
@@ -1122,7 +1138,8 @@ if __name__ == '__main__':
         stdout.write("-> Loading exclude list dictionary ... ")
         load_ipmap()
         print "Done!"
-        # Collect the IPs from the text file(s) and put into a list
+
+        # Get the v4 and v6 IPs from the files and place them in lists...
         stdout.write("-> Extracting IPs from the text file(s) ... ")
         if file_list:
             capture_list_ipv6, capture_list_ipv4 = extract_file_ips(file_list)
@@ -1130,19 +1147,19 @@ if __name__ == '__main__':
             print "No files defined for scrubbing!"
             exit(0)
 
-        # Process the list (remove excluded IPs, sorts, converts to list of dictionaries, removes duplicates)
+        # Process the lists (remove excluded IPs, sort, converts to list of dictionaries, remove duplicates)
         stdout.write("-> Processing the IP list ... ")
         ipv4_list = process_capture_list(capture_list_ipv4)
         ipv6_list = process_capture_list_ipv6(capture_list_ipv6)
         print "Done!"
 
-        # Create Map List Dictionary
+        # Create Map List Dictionary (old to new mappings)
         stdout.write("-> Creating IP mappings ... ")
         populate_ipv4_ld(ipv4_list)
         populate_ipv6_ld(ipv6_list)
         print "Done!"
 
-        # Loop over the files to be scrubbe
+        # Loop over the files to be scrubbed
         print "\n##############################"
         print "# Scrubbing Individual Files #"
         print "##############################\n"
@@ -1154,9 +1171,6 @@ if __name__ == '__main__':
             stdout.write("\t-> Replacing targeted IPs ... ")
             replaced_list = replace_ips(input_file)
             print "Done!"
-            #pprint(network_ld)
-            #print "HOSTS:"
-            #pprint(host_ld)
 
             # Create File From Results List
             orig_filename = ntpath.basename(input_file)
