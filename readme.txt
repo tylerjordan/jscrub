@@ -49,11 +49,34 @@ Script Output:
 --------------
 The script will place all scrubbed files in the "scrubbed_files" directory located at the root of the script.
 
-Required File Formats (IPMAP):
-
+IPMAP File Format:
+------------------
 The ipmap file contains a list of excluded IP addresses, located under 'EXCLUDE' . These IP addresses and any addresses that fall within their subnets will NOT be manipulated. There are a number of predefined IPs in the default ipmap file which include well-known IPs and ranges.
 
 Under the 'EXCLUDE' list is the 'TEXT-MAPPING' section which contains the keywords and their replacements. Each line represents a text string that will be removed and its replacement. The first term is the text that will be removed and the second term is the text that is to take its place.
 
 Under the 'TEXT-MAPPING' list is the 'TEXT-REGEX' section which contains regular expressions for matching. It works similar to the 'TEXT-MAPPING' section, the regex matches text with the first term and replaces with the text in the second term.
 
+IPMAP Example:
+--------------
+EXCLUDE
+0.0.0.0/8
+100.64.0.0/10
+127.0.0.0/8
+169.254.0.0/16
+172.16.0.0/12
+192.0.0.0/24
+192.0.2.0/24
+192.168.0.0/16
+198.18.0.0/15
+198.51.100.0/24
+203.0.113.0/24
+224.0.0.0/3
+255.0.0.0/8
+
+TEXT-MAPPING
+USER-DATA,VLAN1
+SERVER-VLAN,VLAN2
+
+TEXT-REGEX
+"\$\d\$.*",HASH
