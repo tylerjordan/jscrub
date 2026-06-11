@@ -193,6 +193,7 @@ def extract_file_ips(input_files):
                     # Breakout the IP and mask
                     ipaddress_v6 = match.group(0)
                     ipaddress_mask = match.group(1)
+                    print("All Groups: {0}".format(match.groups))
                     # Use netaddr function to make sure match is valid ipv6
                     if valid_ipv6(ipaddress_v6):
                         print("Line: {0}".format(line))
