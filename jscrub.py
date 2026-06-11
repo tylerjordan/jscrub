@@ -1,19 +1,16 @@
-__copyright__ = "Copyright 2019 Tyler Jordan"
-__version__ = "1.0.1"
-__email__ = "tjordan@juniper.net"
+__copyright__: str = "Copyright 2019 Tyler Jordan"
+__version__: str = "1.0.1"
+__email__: str = "tjordan@juniper.net"
 
 
 import argparse
 import ntpath
-import platform
 import os
 import re
 
-from operator import itemgetter
 from random import randrange, randint, choice
 from sys import stdout
-from pprint import pprint
-from netaddr import IPNetwork, valid_ipv6
+from netaddr import IPNetwork
 
 # Global Variables
 host_ld = []
@@ -40,7 +37,7 @@ def list_to_txt(dest_file, src_list):
             for line in src_list:
                 text_config.write("{0}\n".format(line))
     except Exception as err:
-        print "Error writing list to file. ERROR: {0}".format(err)
+        print("Error writing list to file. ERROR: {0}".format(err))
         return False
     else:
         return True
@@ -52,7 +49,7 @@ def txt_to_list(txt_file):
         with open(txt_file) as f:
             command_list = f.read().splitlines()
     except Exception as err:
-        print "Error turning file into list. ERROR: {0}".format(err)
+        print("Error turning file into list. ERROR: {0}".format(err))
         return False
     else:
         return command_list
@@ -82,9 +79,9 @@ def remove_excluded_ips(ip_list):
 def getTFAnswer(question):
     answer = False
     while not answer:
-        print ""
-        ynanswer = raw_input(question + '(y/n): ')
-        print ""
+        print("")
+        ynanswer = input(question + '(y/n): ')
+        print("")
         if ynanswer == 'Y' or ynanswer == 'y':
             answer = True
             return answer
@@ -92,7 +89,7 @@ def getTFAnswer(question):
             answer = False
             return answer
         else:
-            print "Bad Selection"
+            print("Bad Selection")
 
 
 # This method populates two list dictionaries with the ipmap contents
@@ -136,7 +133,7 @@ def load_ipmap():
                 else:
                     pass
     else:
-        print "IPMAP FILE: NOT DEFINED"
+        print("IPMAP FILE: NOT DEFINED")
         exit(0)
 
 
@@ -147,7 +144,7 @@ def extract_file_ips(input_files):
     # If the mask is more than 2 digits long, it will only match the IP octets. "(?!\d)"
     ipv4_regex = re.compile("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}"
                             "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])"
-                            "(\/(8|9|1[0-9]|2[0-9]|3[0-2]))?(?!\d)")
+                            "(/(8|9|1[0-9]|2[0-9]|3[0-2]))?(?!\d)")
 
     ipv6_regex = re.compile("(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:)"
                             "{1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:)"
@@ -157,14 +154,14 @@ def extract_file_ips(input_files):
                             "{0,4}%[0-9a-zA-Z]{?}|::(ffff(:0{1,4}){?}:){?}((25[0-5]|(2[0-4]|1{?}[0-9])"
                             "{?}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{?}[0-9]){?}[0-9])|([0-9a-fA-F]{1,4}:)"
                             "{1,4}:((25[0-5]|(2[0-4]|1{?}[0-9]){?}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{?}[0-9])"
-                            "{?}[0-9]))(\/([1][0-1][0-9]|[1][2][0-8]|[0-9][0-9]))?")
+                            "{?}[0-9]))(/([1][0-1][0-9]|[1][2][0-8]|[0-9][0-9]))?")
 
     # Create list of interesting items
     capture_list_ipv4 = []
     capture_list_ipv6 = []
-    print ""
+    print("")
     for input_file in input_files:
-        print "\tProcessing File: {0}".format(ntpath.basename(input_file))
+        print("\tProcessing File: {0}".format(ntpath.basename(input_file)))
         # Load targeted scrub file into a list
         line_list = txt_to_list(input_file)
         # Check for content using provided regexs
@@ -207,7 +204,7 @@ def extract_file_ips(input_files):
                     frag_start = ipindex[1]
         # If it failed to read or convert the file
         else:
-            print "ERROR: Unable to convert file to list: {0}".format(input_file)
+            print("ERROR: Unable to convert file to list: {0}".format(input_file))
     # Remove duplicates and return the capture interesting terms
     return (list(set(capture_list_ipv6)), list(set(capture_list_ipv4)))
 
@@ -266,7 +263,7 @@ def replace_ips(input_file):
             capture_list.append(new_line)
     # If it failed to read or convert the file
     else:
-        print "ERROR: Unable to convert file to list: {0}".format(input_file)
+        print("ERROR: Unable to convert file to list: {0}".format(input_file))
     # Return the capture interesting terms
     return capture_list
 
@@ -336,7 +333,7 @@ def sort_host_ld():
 
     # No entries to sort
     else:
-        print "ERROR: No entries in data to sort."
+        print("ERROR: No entries in data to sort.")
 
 
 # Get the length of the fourth octet for the sort mechanism
@@ -373,7 +370,7 @@ def process_capture_list_ipv6(capture_list):
                         break
                 # If they are the same IP, choose the IP with the lowest mask
                 else:
-                    if new_ip_mask < str(list_ip['ip_mask']):
+                    if new_ip_mask < int(list_ip['ip_mask']):
                         sorted_ips.pop(idx)
                         new_entry = {'ip_addr': new_ip_addr, 'ip_mask': new_ip_mask}
                         sorted_ips.insert(idx, new_entry)
@@ -417,7 +414,7 @@ def process_capture_list(capture_list):
                 # If they are the same IP, choose the IP with the lowest mask
                 else:
                     if new_ip.prefixlen < list_ip.prefixlen:
-                        print "\tRemoving existing IP, adding new IP"
+                        print("\tRemoving existing IP, adding new IP")
                         sorted_ips.pop(idx)
                         sorted_ips.insert(idx, new_ip)
                 # Increments the index number for list
@@ -651,7 +648,6 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
         # Perform the IP analysis if a map_ip was provided
         if map_ip:
             map_oct = get_host_octets(map_ip)
-            map_mask = map_ip.prefixlen
 
         # IP Creation Matches
         # If there's an exact (network) match, we want to make an exact host match (if IP is a host address)
@@ -781,7 +777,7 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
             if dup_count == 10:
                 octets = generate_random_ipv4(cap_oct, octets)
                 new_ip = IPNetwork(".".join(octets) + "/" + str(cap_mask))
-                print "\nDuplicate Error, Created Random Mapping - {0} | New IP: {1}".format(one_dict, new_ip)
+                print("\nDuplicate Error, Created Random Mapping - {0} | New IP: {1}".format(one_dict, new_ip))
                 ip_unverified = False
 
             # Check network_ld for duplicates
@@ -799,7 +795,6 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
                         break
     # Return the newly created IP
     return new_ip
-
 
 # Check if this IP is in the IP mapping dictionary
 def check_host_ld(cap_ip):
@@ -974,7 +969,7 @@ if __name__ == '__main__':
     # Check that the arguments are valid...
     # Check that the IPMAP file exists
     if not os.path.isfile(ipmap_file):
-        print "ERROR: IPMAP File: [{0}] - Does Not Exist!".format(ipmap_file)
+        print("ERROR: IPMAP File: [{0}] - Does Not Exist!".format(ipmap_file))
         exit(0)
     # Check if the input_file exists and is a file or directory
     if os.path.isfile(input_file):
@@ -982,29 +977,29 @@ if __name__ == '__main__':
     elif os.path.isdir(input_file):
         input_file_display = " Input Directory: {0}".format(input_file)
     else:
-        print "ERROR: Input File: [{0}] - Is not a valid File or Directory!".format(input_file)
+        print("ERROR: Input File: [{0}] - Is not a valid File or Directory!".format(input_file))
         exit(0)
 
     # Main Program Loop
-    print "********************************************"
-    print "*                JSCRUB                    *"
-    print "*       ASCII File Scrubbing Utility       *"
-    print "********************************************"
-    print input_file_display
-    print " IPMAP File: {0}".format(ipmap_file)
-    print "********************************************"
-    print "##############################"
-    print "# Starting Main Program Loop #"
-    print "##############################\n"
+    print('********************************************')
+    print("*                JSCRUB                    *")
+    print("*       ASCII File Scrubbing Utility       *")
+    print("********************************************")
+    print(input_file_display)
+    print(" IPMAP File: {0}".format(ipmap_file))
+    print("********************************************")
+    print("##############################")
+    print("# Starting Main Program Loop #")
+    print("##############################\n")
     capture_ld = []
     try:
         # Run this if the argument is a directory...
         file_list = []
         if os.path.isdir(input_file):
             txt_ext = [".log", ".txt", ".conf"]
-            print "#############################"
-            print "# Text Files to be Scrubbed #"
-            print "#############################\n"
+            print("#############################")
+            print("# Text Files to be Scrubbed #")
+            print("#############################\n")
             for root, directories, filenames in os.walk(input_file):
                 for directory in directories:
                     # print os.path.join(root, directory)
@@ -1012,74 +1007,74 @@ if __name__ == '__main__':
                 for filename in filenames:
                     # print os.path.join(root, filename)
                     if filename.endswith(tuple(txt_ext)):
-                        print "- {0}".format(filename)
+                        print("- {0}".format(filename))
                         file_list.append(os.path.join(root, filename))
                         # pprint(file_list)
         # Run this if argument is a file
         else:
             file_list.append(input_file)
-            print "- {0}".format(ntpath.basename(input_file))
+            print("- {0}".format(ntpath.basename(input_file)))
 
         # Check if the user wants to continue, exit if not
         if not getTFAnswer("Continue with scrubbing these files"):
-            print "Exiting Scrubbing Utility..."
+            print("Exiting Scrubbing Utility...")
             exit(0)
 
         # Load the exclude list dictionary
-        print "\n######################"
-        print "# Create IP Mappings #"
-        print "######################\n"
+        print("\n######################")
+        print("# Create IP Mappings #")
+        print("######################\n")
         stdout.write("-> Loading exclude list dictionary ... ")
         load_ipmap()
-        print "Done!"
+        print("Done!")
 
         # Get the v4 and v6 IPs from the files and place them in lists...
         stdout.write("-> Extracting IPs from the text file(s) ... ")
         if file_list:
             capture_list_ipv6, capture_list_ipv4 = extract_file_ips(file_list)
         else:
-            print "No files defined for scrubbing!"
+            print("No files defined for scrubbing!")
             exit(0)
 
         # Process the lists (remove excluded IPs, sort, converts to list of dictionaries, remove duplicates)
         stdout.write("-> Processing the IP list ... ")
         ipv4_list = process_capture_list(capture_list_ipv4)
         ipv6_list = process_capture_list_ipv6(capture_list_ipv6)
-        print "Done!"
+        print("Done!")
 
         # Create Map List Dictionary (old to new mappings)
         stdout.write("-> Creating IP mappings ... ")
         populate_ipv4_ld(ipv4_list)
         populate_ipv6_ld(ipv6_list)
-        print "Done!"
+        print("Done!")
 
         # Loop over the files to be scrubbed
-        print "\n##############################"
-        print "# Scrubbing Individual Files #"
-        print "##############################\n"
+        print("\n##############################")
+        print("# Scrubbing Individual Files #")
+        print("##############################\n")
         for input_file in file_list:
             # Perform Replacement Function
-            print "-> Processing file: {0}".format(ntpath.basename(input_file))
+            print("-> Processing file: {0}".format(ntpath.basename(input_file)))
 
             # Replace IPs
             stdout.write("\t-> Replacing targeted IPs ... ")
             replaced_list = replace_ips(input_file)
-            print "Done!"
+            print("Done!")
 
             # Create File From Results List
             orig_filename = ntpath.basename(input_file)
             myfile = os.path.join(scrub_dir, "[SCRUB]-" + orig_filename)
             stdout.write("\t-> Writing File ... ")
             if list_to_txt(myfile, replaced_list):
-                print "Done!"
+                print("Done!")
             else:
-                print "Failed: Conversion to text file failed!".format(myfile)
+                print("Failed: Conversion to text file failed!".format(myfile))
     # If there is the terminating sequence throughout the main program loop, exit gracefully
     except KeyboardInterrupt:
-        print 'Exiting...'
+        print('Exiting...')
         exit(0)
     else:
-        print "\n############################"
-        print "# Completed Scrubbing Task #"
-        print "############################"
+        print("\n############################")
+        print("# Completed Scrubbing Task #")
+        print("############################")
         exit(0)
