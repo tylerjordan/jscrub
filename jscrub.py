@@ -191,8 +191,8 @@ def extract_file_ips(input_files):
                 # Check the line for a pattern that matches an IPv6 address
                 for match in ipv6_regex.finditer(line):
                     # Breakout the IP and mask
-                    ipaddress_v6 = match.group(1)
-                    ipaddress_mask = match.group(2)
+                    ipaddress_v6 = match.group(0)
+                    ipaddress_mask = match.group(1)
                     # Use netaddr function to make sure match is valid ipv6
                     if valid_ipv6(ipaddress_v6):
                         print("Line: {0}".format(line))
