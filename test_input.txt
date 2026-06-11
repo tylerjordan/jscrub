@@ -1,0 +1,218 @@
+set system host-name vmx1
+set system login user admin uid 2006
+set system login user admin class super-user
+set system services ssh connection-limit 4
+set system services ssh rate-limit 10
+set system services telnet connection-limit 4
+set system services telnet rate-limit 10
+set system services netconf ssh connection-limit 6
+set system services netconf ssh rate-limit 2
+set system services netconf rfc-compliant
+set system services netconf yang-compliant
+set system time-zone America/Los_Angeles
+set system authentication-order radius
+set system authentication-order password
+set system name-server 10.10.10.1
+set system radius-server 10.10.10.1 secret "$9$EINSlM7-waZj8XZjHqQzhSre8XNdb2oJ"
+set system radius-server 10.10.10.1 timeout 3
+set system radius-server 10.10.10.1 retry 3
+set system radius-server 10.10.10.1 source-address 192.168.0.1
+set system ntp server 10.10.10.1
+set system ntp source-address 192.168.0.1
+set security authentication-key-chains key-chain bgp-auth key 1 secret "$9$vjJ8xd24Zk.5bs.5QFAtM8X7bsgoJDHq"
+set security authentication-key-chains key-chain bgp-auth key 1 start-time "2025-1-1.01:01:00 -0800"
+set security authentication-key-chains key-chain bgp-auth key 1 algorithm md5
+set interfaces ge-0/0/0 unit 0 family inet address 192.168.12.1/24
+set interfaces ge-0/0/0 unit 0 family inet6 address 2001:0db8:3000:0012::1/64
+set interfaces ge-0/0/1 unit 0 family inet address 192.168.13.1/24
+set interfaces ge-0/0/1 unit 0 family inet6 address 2001:0db8:3000:0013::1/64
+set interfaces ge-0/0/2 unit 0 family inet address 192.168.14.1/24
+set interfaces ge-0/0/2 unit 0 family inet6 address 2001:0db8:3000:0014::1/64
+set interfaces ge-0/0/3 unit 0 family inet address 172.16.1.1/24
+set interfaces ge-0/0/3 unit 0 family inet6 address 2001:0db9:4000:0001::1/64
+set interfaces lo0 unit 0 family inet filter input protect-re-v4
+set interfaces lo0 unit 0 family inet address 192.168.0.1/32
+set interfaces lo0 unit 0 family inet6 address 2001:0db8:3000:0000::1/128
+set snmp client-list space 10.10.1.99/32
+set snmp community jncie authorization read-only
+set snmp community jncie client-list-name space
+set snmp trap-options source-address 10.10.1.1
+set snmp trap-group link-chassis-group categories chassis
+set snmp trap-group link-chassis-group categories link
+set snmp trap-group link-chassis-group targets 10.10.1.99
+set policy-options prefix-list bgp-peers apply-path "protocols bgp group <*> neighbor <*>"
+set policy-options prefix-list direct-subnets apply-path "interfaces <*> unit <*> family inet address <*>"
+set policy-options prefix-list bgp-peers-allow apply-path "protocols bgp group <*> allow <*>"
+set policy-options policy-statement accept-isp-routes term 1 from protocol bgp
+set policy-options policy-statement accept-isp-routes term 1 from neighbor 172.16.1.9
+set policy-options policy-statement accept-isp-routes term 1 then community set no-export
+set policy-options policy-statement accept-isp-routes term 1 then accept
+set policy-options policy-statement accept-isp-routes term 2 then reject
+set policy-options policy-statement accept-isp-routes-v6 term 1 from protocol bgp
+set policy-options policy-statement accept-isp-routes-v6 term 1 from neighbor 2001:db9:4000:1::9
+set policy-options policy-statement accept-isp-routes-v6 term 1 then accept
+set policy-options policy-statement accept-isp-routes-v6 term 2 then reject
+set policy-options policy-statement agg-contributor term 1 from route-filter 2001:0db8:3000::/48 orlonger
+set policy-options policy-statement agg-contributor term 1 then accept
+set policy-options policy-statement agg-contributor term 2 then reject
+set policy-options policy-statement agg-to-bgp term 1 from protocol aggregate
+set policy-options policy-statement agg-to-bgp term 1 from route-filter 0.0.0.0/0 exact
+set policy-options policy-statement agg-to-bgp term 1 then next-hop self
+set policy-options policy-statement agg-to-bgp term 1 then accept
+set policy-options policy-statement agg-to-bgp-v6 term 1 from protocol static
+set policy-options policy-statement agg-to-bgp-v6 term 1 from route-filter ::/0 exact
+set policy-options policy-statement agg-to-bgp-v6 term 1 then next-hop self
+set policy-options policy-statement agg-to-bgp-v6 term 1 then accept
+set policy-options policy-statement agg-to-bgp-v6 term 2 then reject
+set policy-options policy-statement if-isp-is-up term 1 from protocol bgp
+set policy-options policy-statement if-isp-is-up term 1 from neighbor 172.16.1.9
+set policy-options policy-statement if-isp-is-up term 1 then accept
+set policy-options policy-statement if-isp-is-up term 2 then reject
+set policy-options policy-statement nhs term 1 then next-hop self
+set policy-options policy-statement send-to-isp term 1 from route-filter 192.168.0.0/16 exact
+set policy-options policy-statement send-to-isp term 1 from route-filter 10.100.0.0/16 exact
+set policy-options policy-statement send-to-isp term 1 from route-filter 10.200.0.0/16 exact
+set policy-options policy-statement send-to-isp term 1 then community add prepend-1111x2
+set policy-options policy-statement send-to-isp term 1 then accept
+set policy-options policy-statement send-to-isp term 2 then reject
+set policy-options policy-statement send-to-isp-v6 term 1 from protocol aggregate
+set policy-options policy-statement send-to-isp-v6 term 1 from route-filter 2001:0db8::/32 exact
+set policy-options policy-statement send-to-isp-v6 term 1 then accept
+set policy-options policy-statement send-to-isp-v6 term 2 then reject
+set policy-options community no-export members no-export
+set policy-options community prepend-1111x2 members 1111:1111
+set firewall family inet filter protect-re-v4 apply-flags omit
+set firewall family inet filter protect-re-v4 term tcp-flood from protocol tcp
+set firewall family inet filter protect-re-v4 term tcp-flood from tcp-flags "(syn & !ack) | fin | rst"
+set firewall family inet filter protect-re-v4 term tcp-flood then policer tcp-flood-limit
+set firewall family inet filter protect-re-v4 term tcp-flood then accept
+set firewall family inet filter protect-re-v4 term allow-bfd from protocol udp
+set firewall family inet filter protect-re-v4 term allow-bfd from port 3784
+set firewall family inet filter protect-re-v4 term allow-bfd then accept
+set firewall family inet filter protect-re-v4 term allow-vrrp from source-prefix-list direct-subnets
+set firewall family inet filter protect-re-v4 term allow-vrrp from protocol vrrp
+set firewall family inet filter protect-re-v4 term allow-vrrp then accept
+set firewall family inet filter protect-re-v4 term allow-ospf from source-prefix-list direct-subnets
+set firewall family inet filter protect-re-v4 term allow-ospf from protocol ospf
+set firewall family inet filter protect-re-v4 term allow-ospf then accept
+set firewall family inet filter protect-re-v4 term allow-radius from address 10.10.10.0/24
+set firewall family inet filter protect-re-v4 term allow-radius from protocol udp
+set firewall family inet filter protect-re-v4 term allow-radius from port radius
+set firewall family inet filter protect-re-v4 term allow-radius then accept
+set firewall family inet filter protect-re-v4 term allow-dns from address 10.10.10.0/24
+set firewall family inet filter protect-re-v4 term allow-dns from protocol udp
+set firewall family inet filter protect-re-v4 term allow-dns from port domain
+set firewall family inet filter protect-re-v4 term allow-dns then accept
+set firewall family inet filter protect-re-v4 term allow-snmp from address 10.10.10.0/24
+set firewall family inet filter protect-re-v4 term allow-snmp from protocol udp
+set firewall family inet filter protect-re-v4 term allow-snmp from port snmp
+set firewall family inet filter protect-re-v4 term allow-snmp then accept
+set firewall family inet filter protect-re-v4 term allow-bgp from prefix-list bgp-peers
+set firewall family inet filter protect-re-v4 term allow-bgp from prefix-list bgp-peers-allow
+set firewall family inet filter protect-re-v4 term allow-bgp from protocol tcp
+set firewall family inet filter protect-re-v4 term allow-bgp from port bgp
+set firewall family inet filter protect-re-v4 term allow-bgp then accept
+set firewall family inet filter protect-re-v4 term allow-ntp from address 10.10.10.0/24
+set firewall family inet filter protect-re-v4 term allow-ntp from address 10.10.1.0/24
+set firewall family inet filter protect-re-v4 term allow-ntp from protocol udp
+set firewall family inet filter protect-re-v4 term allow-ntp from port ntp
+set firewall family inet filter protect-re-v4 term allow-ntp then accept
+set firewall family inet filter protect-re-v4 term allow-ssh from address 10.10.1.0/24
+set firewall family inet filter protect-re-v4 term allow-ssh from protocol tcp
+set firewall family inet filter protect-re-v4 term allow-ssh from port ssh
+set firewall family inet filter protect-re-v4 term allow-ssh from port 830
+set firewall family inet filter protect-re-v4 term allow-ssh then accept
+set firewall family inet filter protect-re-v4 term allow-telnet from address 10.10.1.0/24
+set firewall family inet filter protect-re-v4 term allow-telnet from protocol tcp
+set firewall family inet filter protect-re-v4 term allow-telnet from port telnet
+set firewall family inet filter protect-re-v4 term allow-telnet then accept
+set firewall family inet filter protect-re-v4 term allow-icmp from protocol icmp
+set firewall family inet filter protect-re-v4 term allow-icmp then policer icmp-flood-limit
+set firewall family inet filter protect-re-v4 term allow-icmp then accept
+set firewall family inet filter protect-re-v4 term allow-traceroute from protocol icmp
+set firewall family inet filter protect-re-v4 term allow-traceroute from port 33434-33534
+set firewall family inet filter protect-re-v4 term allow-traceroute then policer icmp-flood-limit
+set firewall family inet filter protect-re-v4 term allow-traceroute then accept
+set firewall family inet filter protect-re-v4 term discard then count discards
+set firewall family inet filter protect-re-v4 term discard then discard
+set firewall policer icmp-flood-limit apply-flags omit
+set firewall policer icmp-flood-limit if-exceeding bandwidth-limit 100k
+set firewall policer icmp-flood-limit if-exceeding burst-size-limit 25k
+set firewall policer icmp-flood-limit then discard
+set firewall policer tcp-flood-limit apply-flags omit
+set firewall policer tcp-flood-limit if-exceeding bandwidth-limit 500k
+set firewall policer tcp-flood-limit if-exceeding burst-size-limit 125k
+set firewall policer tcp-flood-limit then discard
+set routing-options rib inet6.0 static route ::/0 discard
+set routing-options rib inet6.0 static route ::/0 no-install
+set routing-options rib inet6.0 aggregate route 2001:0db8::/32 policy agg-contributor
+set routing-options router-id 192.168.0.1
+set routing-options autonomous-system 10458
+set routing-options generate route 0.0.0.0/0 policy if-isp-is-up
+set protocols bgp group IBGP-RR-IPv4 type internal
+set protocols bgp group IBGP-RR-IPv4 local-address 192.168.0.1
+set protocols bgp group IBGP-RR-IPv4 export nhs
+set protocols bgp group IBGP-RR-IPv4 export agg-to-bgp
+set protocols bgp group IBGP-RR-IPv4 cluster 192.168.0.1
+set protocols bgp group IBGP-RR-IPv4 bfd-liveness-detection minimum-interval 1000
+set protocols bgp group IBGP-RR-IPv4 bfd-liveness-detection multiplier 5
+set protocols bgp group IBGP-RR-IPv4 bfd-liveness-detection authentication key-chain bgp-auth
+set protocols bgp group IBGP-RR-IPv4 bfd-liveness-detection authentication algorithm keyed-sha-1
+set protocols bgp group IBGP-RR-IPv4 bfd-liveness-detection session-mode multihop
+set protocols bgp group IBGP-RR-IPv4 allow 192.168.0.0/29
+set protocols bgp group IBGP-VMX2-IPv4 type internal
+set protocols bgp group IBGP-VMX2-IPv4 local-address 192.168.0.1
+set protocols bgp group IBGP-VMX2-IPv4 export nhs
+set protocols bgp group IBGP-VMX2-IPv4 neighbor 192.168.0.2
+set protocols bgp group IBGP-RR-IPv6 type internal
+set protocols bgp group IBGP-RR-IPv6 local-address 2001:0db8:3000:0000::1
+set protocols bgp group IBGP-RR-IPv6 family inet6 unicast
+set protocols bgp group IBGP-RR-IPv6 export nhs
+set protocols bgp group IBGP-RR-IPv6 export agg-to-bgp-v6
+set protocols bgp group IBGP-RR-IPv6 cluster 192.168.0.1
+set protocols bgp group IBGP-RR-IPv6 bfd-liveness-detection minimum-interval 1000
+set protocols bgp group IBGP-RR-IPv6 bfd-liveness-detection multiplier 5
+set protocols bgp group IBGP-RR-IPv6 bfd-liveness-detection authentication key-chain bgp-auth
+set protocols bgp group IBGP-RR-IPv6 bfd-liveness-detection authentication algorithm keyed-sha-1
+set protocols bgp group IBGP-RR-IPv6 bfd-liveness-detection session-mode multihop
+set protocols bgp group IBGP-RR-IPv6 allow 2001:0db8:3000:0000::0/125
+set protocols bgp group IBGP-VMX2-IPv6 type internal
+set protocols bgp group IBGP-VMX2-IPv6 local-address 2001:0db8:3000:0000::1
+set protocols bgp group IBGP-VMX2-IPv6 family inet6 unicast
+set protocols bgp group IBGP-VMX2-IPv6 export nhs
+set protocols bgp group IBGP-VMX2-IPv6 neighbor 2001:0db8:3000:0000::2
+set protocols bgp group EBGP-ISP1-IPv4 type external
+set protocols bgp group EBGP-ISP1-IPv4 local-address 172.16.1.1
+set protocols bgp group EBGP-ISP1-IPv4 import accept-isp-routes
+set protocols bgp group EBGP-ISP1-IPv4 export send-to-isp
+set protocols bgp group EBGP-ISP1-IPv4 remove-private
+set protocols bgp group EBGP-ISP1-IPv4 peer-as 1111
+set protocols bgp group EBGP-ISP1-IPv4 neighbor 172.16.1.9
+set protocols bgp group EBGP-ISP1-IPv6 type external
+set protocols bgp group EBGP-ISP1-IPv6 local-address 2001:0db9:4000:0001::1
+set protocols bgp group EBGP-ISP1-IPv6 import accept-isp-routes-v6
+set protocols bgp group EBGP-ISP1-IPv6 family inet6 unicast
+set protocols bgp group EBGP-ISP1-IPv6 export send-to-isp-v6
+set protocols bgp group EBGP-ISP1-IPv6 remove-private
+set protocols bgp group EBGP-ISP1-IPv6 peer-as 1111
+set protocols bgp group EBGP-ISP1-IPv6 neighbor 2001:0db9:4000:0001::9
+set protocols ospf area 0.0.0.1 interface lo0.0
+set protocols ospf area 0.0.0.0 interface ge-0/0/0.0 interface-type p2p
+set protocols ospf area 0.0.0.0 interface ge-0/0/0.0 link-protection
+set protocols ospf area 0.0.0.0 interface ge-0/0/0.0 hello-interval 1
+set protocols ospf area 0.0.0.0 interface ge-0/0/1.0 interface-type p2p
+set protocols ospf area 0.0.0.0 interface ge-0/0/1.0 link-protection
+set protocols ospf area 0.0.0.0 interface ge-0/0/1.0 hello-interval 1
+set protocols ospf area 0.0.0.0 interface ge-0/0/2.0 interface-type p2p
+set protocols ospf area 0.0.0.0 interface ge-0/0/2.0 link-protection
+set protocols ospf area 0.0.0.0 interface ge-0/0/2.0 hello-interval 1
+set protocols ospf reference-bandwidth 100g
+set protocols ospf3 area 0.0.0.0 virtual-link neighbor-id 192.168.0.3 transit-area 0.0.0.1
+set protocols ospf3 area 0.0.0.0 virtual-link neighbor-id 192.168.0.4 transit-area 0.0.0.1
+set protocols ospf3 area 0.0.0.0 interface lo0.0 passive
+set protocols ospf3 area 0.0.0.0 interface ge-0/0/0.0 interface-type p2p
+set protocols ospf3 area 0.0.0.0 interface ge-0/0/0.0 hello-interval 1
+set protocols ospf3 area 0.0.0.1 interface ge-0/0/1.0 interface-type p2p
+set protocols ospf3 area 0.0.0.1 interface ge-0/0/1.0 hello-interval 1
+set protocols ospf3 area 0.0.0.1 interface ge-0/0/2.0 interface-type p2p
+set protocols ospf3 area 0.0.0.1 interface ge-0/0/2.0 hello-interval 1

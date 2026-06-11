@@ -10,7 +10,7 @@ import re
 
 from random import randrange, randint, choice
 from sys import stdout
-from netaddr import IPNetwork
+from netaddr import IPNetwork, valid_ipv6
 
 # Global Variables
 host_ld = []
@@ -142,19 +142,11 @@ def extract_file_ips(input_files):
     # Regexs
     # This IPv4 expression will match an IP and masks from /8 to /32.
     # If the mask is more than 2 digits long, it will only match the IP octets. "(?!\d)"
-    ipv4_regex = re.compile("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.){3}"
+    ipv4_regex = re.compile("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}"
                             "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])"
-                            "(/(8|9|1[0-9]|2[0-9]|3[0-2]))?(?!\d)")
+                            "(/(8|9|1[0-9]|2[0-9]|3[0-2]))?(?!\\d)")
 
-    ipv6_regex = re.compile("(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:)"
-                            "{1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:)"
-                            "{1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4})"
-                            "{1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:"
-                            "((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4})"
-                            "{0,4}%[0-9a-zA-Z]{?}|::(ffff(:0{1,4}){?}:){?}((25[0-5]|(2[0-4]|1{?}[0-9])"
-                            "{?}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{?}[0-9]){?}[0-9])|([0-9a-fA-F]{1,4}:)"
-                            "{1,4}:((25[0-5]|(2[0-4]|1{?}[0-9]){?}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{?}[0-9])"
-                            "{?}[0-9]))(/([1][0-1][0-9]|[1][2][0-8]|[0-9][0-9]))?")
+    ipv6_regex = re.compile(r'\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{1,4}(?:/(\d{1,3}))?\b')
 
     # Create list of interesting items
     capture_list_ipv4 = []
@@ -171,8 +163,6 @@ def extract_file_ips(input_files):
                 # Get the start and end indexes for captured regex terms
                 indicies = [[m.start(), m.end()] for m in ipv4_regex.finditer(line)]
                 # Create default start and end indicies
-                frag_start = 0
-                frag_end = len(line)
                 # Loop over indicies
                 for ipindex in indicies:
                     ip = str(line[ipindex[0]:ipindex[1]])
@@ -182,26 +172,19 @@ def extract_file_ips(input_files):
                         capture_list_ipv4.append(ip)
                     else:
                         capture_list_ipv4.append(ip + "/32")
-                    # Update the frag_start to last index
-                    frag_start = ipindex[1]
-
                 # IPv6 Capture
-                # Get the start and end indexes for captured regex terms
-                indicies = [[m.start(), m.end()] for m in ipv6_regex.finditer(line)]
-                # Create default start and end indicies
-                frag_start = 0
-                frag_end = len(line)
-                # Loop over indicies
-                for ipindex in indicies:
-                    ip = str(line[ipindex[0]:ipindex[1]])
-                    # Add a "/32" suffix to IPv4 and "/128" suffix to IPv6
-                    # If an IP already has a mask, keep it, otherwise add a host mask
-                    if "/" in ip:
-                        capture_list_ipv6.append(ip)
-                    else:
-                        capture_list_ipv6.append(ip + "/128")
-                    # Update the frag_start to last index
-                    frag_start = ipindex[1]
+                # Check the line for a pattern that matches an IPv6 address
+                for match in ipv6_regex.finditer(line):
+                    # Breakout the IP and mask
+                    ipaddress_v6 = match.group(0)
+                    ipaddress_mask = match.group(1)
+                    # Use netaddr function to make sure match is valid ipv6
+                    if valid_ipv6(ipaddress_v6):
+                        # Check if the mask term has been populated, add a "/128" if nothing exists
+                        if ipaddress_mask:
+                            capture_list_ipv6.append(ipaddress_v6 + "/" + ipaddress_mask)
+                        else:
+                            capture_list_ipv6.append(ipaddress_v6 + "/128")
         # If it failed to read or convert the file
         else:
             print("ERROR: Unable to convert file to list: {0}".format(input_file))
