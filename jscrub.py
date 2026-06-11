@@ -146,7 +146,17 @@ def extract_file_ips(input_files):
                             "([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])"
                             "(/(8|9|1[0-9]|2[0-9]|3[0-2]))?(?!\\d)")
 
-    ipv6_regex = re.compile(r'\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{1,4}(?:/(\d{1,3}))?\b')
+    ipv6_regex = re.compile(
+        r'\b('
+        r'(?:[0-9A-Fa-f]{1,4}:){2,7}[0-9A-Fa-f]{1,4}|'   # full form
+        r'(?:[0-9A-Fa-f]{1,4}:){1,7}:|'                  # trailing ::
+        r':(?::[0-9A-Fa-f]{1,4}){1,7}|'                  # leading ::
+        r'(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|'  # mixed compression
+        r'::'                                            # standalone ::
+        r')'
+        r'(?:/(12[0-8]|1[01]\d|\d?\d))?'                 # optional mask /0–128
+        r'\b'
+    )
 
     # Create list of interesting items
     capture_list_ipv4 = []
@@ -180,11 +190,14 @@ def extract_file_ips(input_files):
                     ipaddress_mask = match.group(1)
                     # Use netaddr function to make sure match is valid ipv6
                     if valid_ipv6(ipaddress_v6):
+                        print("Line: {0}".format(line))
                         # Check if the mask term has been populated, add a "/128" if nothing exists
                         if ipaddress_mask:
                             capture_list_ipv6.append(ipaddress_v6 + "/" + ipaddress_mask)
+                            print("IPv6 Address: {0}/{1}".format(ipaddress_v6, ipaddress_mask))
                         else:
                             capture_list_ipv6.append(ipaddress_v6 + "/128")
+                            print("IPv6 Address: {0}/128".format(ipaddress_v6))
         # If it failed to read or convert the file
         else:
             print("ERROR: Unable to convert file to list: {0}".format(input_file))
