@@ -149,16 +149,17 @@ def extract_file_ips(input_files):
     ipv6_regex = re.compile(
         r'\b('
         r'(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|'                # full
-        r'(?:[0-9A-Fa-f]{1,4}:){1,7}:|'                             # trailing ::
-        r'(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|'             # one omitted
+        r'(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|'             # 1 omission
         r'(?:[0-9A-Fa-f]{1,4}:){1,5}(?::[0-9A-Fa-f]{1,4}){1,2}|'
         r'(?:[0-9A-Fa-f]{1,4}:){1,4}(?::[0-9A-Fa-f]{1,4}){1,3}|'
         r'(?:[0-9A-Fa-f]{1,4}:){1,3}(?::[0-9A-Fa-f]{1,4}){1,4}|'
         r'(?:[0-9A-Fa-f]{1,4}:){1,2}(?::[0-9A-Fa-f]{1,4}){1,5}|'
-        r'[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6})|'         # starts with 1 block
-        r':(?:(?::[0-9A-Fa-f]{1,4}){1,7}|:)'                        # leading ::
+        r'[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6})|'         # leading partial
+        r':(?:(?::[0-9A-Fa-f]{1,4}){1,7}|:)|'                       # starts with ::
+        r'(?:[0-9A-Fa-f]{1,4}:){1,7}:|'                             # trailing ::
+        r'::'
         r')'
-        r'(?:/(?:12[0-8]|1[01]\d|\d?\d))?'                          # optional mask
+        r'(?:/(?:12[0-8]|1[01]\d|\d?\d))?'
         r'\b'
     )
 
@@ -190,8 +191,8 @@ def extract_file_ips(input_files):
                 # Check the line for a pattern that matches an IPv6 address
                 for match in ipv6_regex.finditer(line):
                     # Breakout the IP and mask
-                    ipaddress_v6 = match.group(0)
-                    ipaddress_mask = match.group(1)
+                    ipaddress_v6 = match.group(1)
+                    ipaddress_mask = match.group(2)
                     # Use netaddr function to make sure match is valid ipv6
                     if valid_ipv6(ipaddress_v6):
                         print("Line: {0}".format(line))
