@@ -148,13 +148,17 @@ def extract_file_ips(input_files):
 
     ipv6_regex = re.compile(
         r'\b('
-        r'(?:[0-9A-Fa-f]{1,4}:){2,7}[0-9A-Fa-f]{1,4}|'   # full form
-        r'(?:[0-9A-Fa-f]{1,4}:){1,7}:|'                  # trailing ::
-        r':(?::[0-9A-Fa-f]{1,4}){1,7}|'                  # leading ::
-        r'(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|'  # mixed compression
-        r'::'                                            # standalone ::
+        r'(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|'                # full
+        r'(?:[0-9A-Fa-f]{1,4}:){1,7}:|'                             # trailing ::
+        r'(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|'             # one omitted
+        r'(?:[0-9A-Fa-f]{1,4}:){1,5}(?::[0-9A-Fa-f]{1,4}){1,2}|'
+        r'(?:[0-9A-Fa-f]{1,4}:){1,4}(?::[0-9A-Fa-f]{1,4}){1,3}|'
+        r'(?:[0-9A-Fa-f]{1,4}:){1,3}(?::[0-9A-Fa-f]{1,4}){1,4}|'
+        r'(?:[0-9A-Fa-f]{1,4}:){1,2}(?::[0-9A-Fa-f]{1,4}){1,5}|'
+        r'[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6})|'         # starts with 1 block
+        r':(?:(?::[0-9A-Fa-f]{1,4}){1,7}|:)'                        # leading ::
         r')'
-        r'(?:/(12[0-8]|1[01]\d|\d?\d))?'                 # optional mask /0–128
+        r'(?:/(?:12[0-8]|1[01]\d|\d?\d))?'                          # optional mask
         r'\b'
     )
 
