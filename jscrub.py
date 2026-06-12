@@ -843,7 +843,6 @@ def check_net_ld(cap_ip):
 
 
 # Scans the IPv6 list and creates replacement IPs
-# The input list is in the format #.#.#.#/#, not IPNetwork
 def populate_ipv6_ld(ipv6_list):
     # Loop over the captured ip list
     for cap_ip in ipv6_list:
@@ -855,6 +854,7 @@ def populate_ipv6_ld(ipv6_list):
 
 
 # Scans the IPv4 list and creates replacement IPs
+# The input list is in the format #.#.#.#/#, not IPNetwork
 def populate_ipv4_ld(ipv4_list):
     # Loop over the captured ip list
     for cap_ip in ipv4_list:

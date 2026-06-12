@@ -1,0 +1,56 @@
+Global Unicast Addresses (GUA)
+Range: 2000::/3
+Purpose: most of publicly routable addresses
+
+Unique Local Addresses (ULA)
+Range: fc00::/7 (for locally assigned, fc00::/8)
+Purpose: IPv6 equivalent of private addresses, cannot be routed over internet
+
+Link-Local Unicast Addresses
+Range: fe80::/10
+Purpose: Automatically assigned address to every IPv6 enabled interface, not routable
+
+Multicast Addresses
+Range: ff00::/8
+Purpose: Used to send single streams to multiple destinations
+ff02::1 All nodes(devices) on the local network segment
+ff02::2 All routers on local network segment
+Many more
+
+Segment Routing
+Range: 5f00:/16
+Purpose: For segment routing SRv6
+
+Discard Prefix
+Range: 100::/64
+Purpose: Discard prefix
+
+Teredo Tunneling
+Range: 2001::/32
+Purpose: Teredo Tunneling
+
+6to4 Addressing Scheme:
+Range: 2002::/16
+Purpose: 6to4 addressing scheme
+
+Special and Loopback Addresses
+Loopback Address
+Range: ::1/128
+Purpose: Used by a device to send traffic to itself
+
+Unspecified Address
+Range: ::/128
+Purpose: Used by a host that doesn't have an IP address yet, during boot-up
+
+Documentation Prefix:
+Range: 2001:0db8::/32
+Range: 3fff::/20
+Purpose: Used in documentation, examples, and education tutorials
+
+Transition and Translation Ranges
+IPv4-Mapped Addresses:
+Range: ::ffff:0:0/96
+Purpose: Used to represent and IPv4 address within an IPv6 environment
+
+NAT64/DNS64 Translation: 64:ff9b::/96
+Purpose: Used to translate and map IPv4 packets to IPv6
