@@ -8,6 +8,7 @@ import ntpath
 import os
 import re
 import sys
+import pprint
 
 from random import randrange, randint, choice
 from sys import stdout
@@ -194,17 +195,17 @@ def extract_file_ips(input_files):
                     # Breakout the IP and mask
                     ipaddress_v6 = match.group('ip')
                     ipaddress_mask = match.group('mask')
-                    print("All Groups: {0}".format(match.groups))
+                    #print("All Groups: {0}".format(match.groups))
                     # Use netaddr function to make sure match is valid ipv6
                     if valid_ipv6(ipaddress_v6):
-                        print("Line: {0}".format(line))
+                        #print("Line: {0}".format(line))
                         # Check if the mask term has been populated, add a "/128" if nothing exists
                         if ipaddress_mask:
                             capture_list_ipv6.append(ipaddress_v6 + "/" + ipaddress_mask)
-                            print("IPv6 Address: {0}/{1}".format(ipaddress_v6, ipaddress_mask))
+                            #print("IPv6 Address: {0}/{1}".format(ipaddress_v6, ipaddress_mask))
                         else:
                             capture_list_ipv6.append(ipaddress_v6 + "/128")
-                            print("IPv6 Address: {0}/128".format(ipaddress_v6))
+                            #print("IPv6 Address: {0}/128".format(ipaddress_v6))
         # If it failed to read or convert the file
         else:
             print("ERROR: Unable to convert file to list: {0}".format(input_file))
@@ -846,7 +847,8 @@ def check_net_ld(cap_ip):
 # Scans the IPv6 list and creates replacement IPs
 def populate_ipv6_ld(ipv6_list):
     # Loop over the captured ip list
-    print(ipv6_list)
+    print("PRINTING IPv6 LIST")
+    pprint(ipv6_list)
     sys.exit()
     for cap_ip in ipv6_list:
         print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
