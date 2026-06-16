@@ -390,6 +390,8 @@ def process_capture_list_ipv6(capture_list):
             sorted_ips.append(new_entry)
 
     # Return
+    print("SORTED IPS")
+    print(sorted_ips)
     return sorted_ips
 
 
