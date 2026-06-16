@@ -8,7 +8,7 @@ import ntpath
 import os
 import re
 import sys
-import pprint
+import ipaddress
 
 from random import randrange, randint, choice
 from sys import stdout
@@ -849,9 +849,10 @@ def populate_ipv6_ld(ipv6_list):
     # Loop over the captured ip list
     print("PRINTING IPv6 LIST")
     print(ipv6_list)
-    sys.exit()
+
     for cap_ip in ipv6_list:
         print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
+        print()
         # Check if this IP is in the IP mapping dictionary
         net_mapping = True
         # Continue this loop until the original IP is matched
