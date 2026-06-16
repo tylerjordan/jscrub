@@ -848,7 +848,7 @@ def check_net_ld(cap_ip):
 def populate_ipv6_ld(ipv6_list):
     # Loop over the captured ip list
     print("PRINTING IPv6 LIST")
-    pprint(ipv6_list)
+    print(ipv6_list)
     sys.exit()
     for cap_ip in ipv6_list:
         print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
