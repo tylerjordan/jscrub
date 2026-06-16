@@ -7,6 +7,7 @@ import argparse
 import ntpath
 import os
 import re
+import sys
 
 from random import randrange, randint, choice
 from sys import stdout
@@ -845,12 +846,22 @@ def check_net_ld(cap_ip):
 # Scans the IPv6 list and creates replacement IPs
 def populate_ipv6_ld(ipv6_list):
     # Loop over the captured ip list
+    print(ipv6_list)
+    sys.exit()
     for cap_ip in ipv6_list:
-        # Create a new IPv6 for this IPv6 address
-        new_ip = generate_ipv6(cap_ip)
-        new_entry = {'hs_ip_addr': cap_ip['ip_addr'], 'hs_ip_mask': cap_ip['ip_mask'],
-                     'ls_ip_addr': new_ip['ip_addr'], 'ls_ip_mask': new_ip['ip_mask']}
-        ipv6_ld.append(new_entry)
+        print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
+        # Check if this IP is in the IP mapping dictionary
+        net_mapping = True
+        # Continue this loop until the original IP is matched
+        while net_mapping:
+            # Check the IP database to see if this host exists
+            host_results = check_host_ld(cap_ip)
+
+            # Create a new IPv6 for this IPv6 address
+            new_ip = generate_ipv6(cap_ip)
+            new_entry = {'hs_ip_addr': cap_ip['ip_addr'], 'hs_ip_mask': cap_ip['ip_mask'],
+                         'ls_ip_addr': new_ip['ip_addr'], 'ls_ip_mask': new_ip['ip_mask']}
+            ipv6_ld.append(new_entry)
 
 
 # Scans the IPv4 list and creates replacement IPs
