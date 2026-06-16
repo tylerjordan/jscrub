@@ -804,6 +804,8 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
 def check_host_ld(cap_ip):
     results = {'match': 'none', 'ip': ''}
     if host_ld:
+        print("HOST_LD")
+        print(host_ld)
         for host_ip in host_ld:
             # Check for an exact match of IPs
             if cap_ip.ip == host_ip['hs_ip'].ip:
