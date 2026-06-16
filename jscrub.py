@@ -857,6 +857,7 @@ def populate_ipv6_ld(ipv6_list):
         # Check if this IP is in the IP mapping dictionary
         net_mapping = True
         # Continue this loop until the original IP is matched
+        # The ipv6_ld is the "host" ld for IPv6
         while net_mapping:
             # Check the IP database to see if this host exists
             host_results = check_host_ld(cap_ip)
