@@ -390,8 +390,6 @@ def process_capture_list_ipv6(capture_list):
             sorted_ips.append(new_entry)
 
     # Return
-    print("SORTED IPS")
-    print(sorted_ips)
     return sorted_ips
 
 
@@ -853,8 +851,7 @@ def populate_ipv6_ld(ipv6_list):
     print(ipv6_list)
 
     for cap_ip in ipv6_list:
-        print("Create Mapping For --> {0}/{1}".format(str(cap_ip.ip), str(cap_ip.prefixlen)))
-        print()
+        print("Create Mapping For --> {0}/{1}".format(str(cap_ip['ip_addr']), str(cap_ip['ip_mask'])))
         # Check if this IP is in the IP mapping dictionary
         net_mapping = True
         # Continue this loop until the original IP is matched
@@ -867,7 +864,7 @@ def populate_ipv6_ld(ipv6_list):
             new_entry = {'hs_ip_addr': cap_ip['ip_addr'], 'hs_ip_mask': cap_ip['ip_mask'],
                          'ls_ip_addr': new_ip['ip_addr'], 'ls_ip_mask': new_ip['ip_mask']}
             ipv6_ld.append(new_entry)
-
+    sys.exit()
 
 # Scans the IPv4 list and creates replacement IPs
 # The input list is in the format #.#.#.#/#, not IPNetwork
