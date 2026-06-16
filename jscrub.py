@@ -1055,6 +1055,9 @@ if __name__ == '__main__':
         stdout.write("-> Processing the IP list ... ")
         ipv4_list = process_capture_list(capture_list_ipv4)
         ipv6_list = process_capture_list_ipv6(capture_list_ipv6)
+        print("IPv6 List")
+        print(ipv6_list)
+        sys.exit()
         print("Done!")
 
         # Create Map List Dictionary (old to new mappings)
