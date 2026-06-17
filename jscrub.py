@@ -17,7 +17,8 @@ from netaddr import IPNetwork, valid_ipv6
 # Global Variables
 host_ld = []
 network_ld = []
-ipv6_ld = []
+host_ipv6_ld = []
+network_ipv6_ld = []
 
 # Global Lists
 textmap_list = []
@@ -255,7 +256,7 @@ def replace_ips(input_file):
                     not_matched = False
                     line = new_line
             # Loop over the ipv6 replacement list dictionary
-            for ipv6_d in ipv6_ld:
+            for ipv6_d in host_ipv6_ld:
                 if ipv6_d['hs_ip_addr'] in line:
                     new_line = re.sub(ipv6_d['hs_ip_addr'], ipv6_d['ls_ip_addr'], line)
                     not_matched = False
@@ -800,7 +801,22 @@ def generate_ipv4(cap_ip, map_ip='', match='none'):
     # Return the newly created IP
     return new_ip
 
-# Check if this IP is in the IP mapping dictionary
+# Check if this IPv6 address is in the IP mapping dictionary
+def check_host_ld_ipv6(cap_ip):
+    results = {'match': 'none', 'ip': ''}
+    if host_ipv6_ld:
+        print("HOST_V6_LD")
+        print(host_ipv6_ld)
+        for host_ip in host_ipv6_ld:
+            # Check for an exact match of IPs
+            if cap_ip.ip == host_ip['hs_ip'].ip:
+                # If we have an exact match, create the results
+                results['match'] = 'exact'
+                results['ip'] = host_ip['ls_ip']
+                break
+    return results
+
+# Check if this IPv4 address is in the IP mapping dictionary
 def check_host_ld(cap_ip):
     results = {'match': 'none', 'ip': ''}
     if host_ld:
@@ -815,6 +831,14 @@ def check_host_ld(cap_ip):
                 break
     return results
 
+def check_net_ld_ipv6(cap_ip):
+    # The dictionary of terms to return
+    results = {'match': 'none', 'ip': '', 'net': False}
+    # Check if this IP is a network or host IP
+    is_network = False
+    print("NET CAP_IP")
+    print(cap_ip)
+    sys.exit()
 
 # Check if this IP is in the NET mapping dictionary
 def check_net_ld(cap_ip):
@@ -860,13 +884,14 @@ def populate_ipv6_ld(ipv6_list):
         # The ipv6_ld is the "host" ld for IPv6
         while net_mapping:
             # Check the IP database to see if this host exists
-            host_results = check_host_ld(cap_ip)
+            host_results = check_host_ld_ipv6(cap_ip)
+            net_results = check_net_ld_ipv6(cap_ip)
 
             # Create a new IPv6 for this IPv6 address
             new_ip = generate_ipv6(cap_ip)
             new_entry = {'hs_ip_addr': cap_ip['ip_addr'], 'hs_ip_mask': cap_ip['ip_mask'],
                          'ls_ip_addr': new_ip['ip_addr'], 'ls_ip_mask': new_ip['ip_mask']}
-            ipv6_ld.append(new_entry)
+            host_ipv6_ld.append(new_entry)
     sys.exit()
 
 # Scans the IPv4 list and creates replacement IPs
