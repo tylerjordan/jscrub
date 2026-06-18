@@ -831,6 +831,15 @@ def check_host_ld(cap_ip):
                 break
     return results
 
+def is_strictly_network(ip_str):
+    try:
+        # strict=False allows host bits to exist in the string (e.g., ::1/64)
+        # strict=True raises a ValueError if the IP has any host bits set
+        ipaddress.IPv6Network(f"{ip_str}/128", strict=True)
+        return False # It is a host address
+    except ValueError:
+        return True  # It is a network address
+
 def check_net_ld_ipv6(cap_ip):
     # The dictionary of terms to return
     results = {'match': 'none', 'ip': '', 'net': False}
@@ -838,6 +847,10 @@ def check_net_ld_ipv6(cap_ip):
     is_network = False
     print("NET CAP_IP")
     print(cap_ip)
+    if is_strictly_network(cap_ip.ip_addr):
+        print("Network Address")
+    else:
+        print("Host Address")
     sys.exit()
 
 # Check if this IP is in the NET mapping dictionary
