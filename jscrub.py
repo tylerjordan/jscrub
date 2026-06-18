@@ -847,7 +847,7 @@ def check_net_ld_ipv6(cap_ip):
     is_network = False
     print("NET CAP_IP")
     print(cap_ip)
-    if is_strictly_network(cap_ip.ip_addr):
+    if is_strictly_network(cap_ip["ip_addr"]):
         print("Network Address")
     else:
         print("Host Address")
