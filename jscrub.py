@@ -1061,7 +1061,7 @@ if __name__ == '__main__':
     print("Original: {0} | Anonymized: {1}".format("2001:db8:abcd::1",anon.anonymize("2001:db8:abcd::1")))
     print("Original: {0} | Anonymized: {1}".format("2001:db8:abcd::2", anon.anonymize("2001:db8:abcd::2")))
     print("Original: {0} | Anonymized: {1}".format("2001:db8:bcda::/48", anon.anonymize("2001:db8:bcda::/48")))
-    print("Original: {0} | Anonymized: {1}".format("2001:db8:bcda::1", anon.anonymize("2001:db8:bcda::1")))
+    print("Original: {0} | Anonymized: {1}".format("2001:db8:bcda::2", anon.anonymize("2001:db8:bcda::2")))
 
     capture_ld = []
     try:
