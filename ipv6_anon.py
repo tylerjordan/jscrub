@@ -110,9 +110,24 @@ class IPv6Anonymizer:
     # Entry point
     # ------------------------
     def anonymize(self, value: str):
-        if "/" in value:
-            net = ipaddress.IPv6Network(value, strict=False)
-            return str(self.anonymize_network(net))
-        else:
+
+        # No mask => host
+        if "/" not in value:
             addr = ipaddress.IPv6Address(value)
             return str(self.anonymize_host(addr))
+
+        # Has mask => interface or network
+        iface = ipaddress.IPv6Interface(value)
+
+        # True network?
+        if iface.ip == iface.network.network_address:
+            anon_net = self.anonymize_network(iface.network)
+            return str(anon_net)
+
+        # Host with prefix length
+        anon_ip = self.anonymize_host(
+            iface.ip,
+            prefixlen=iface.network.prefixlen
+        )
+
+        return f"{anon_ip}/{iface.network.prefixlen}"
