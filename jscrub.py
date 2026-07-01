@@ -9,10 +9,13 @@ import os
 import re
 import sys
 import ipaddress
+import hashlib
+import ipv6_anon
 
 from random import randrange, randint, choice
 from sys import stdout
 from netaddr import IPNetwork, valid_ipv6
+from ipv6_anon import IPv6Anonymizer
 
 # Global Variables
 host_ld = []
@@ -200,6 +203,7 @@ def extract_file_ips(input_files):
                     # Use netaddr function to make sure match is valid ipv6
                     if valid_ipv6(ipaddress_v6):
                         #print("Line: {0}".format(line))
+                        ipv6_type = ipv6_type(ipaddress_v6)
                         # Check if the mask term has been populated, add a "/128" if nothing exists
                         if ipaddress_mask:
                             capture_list_ipv6.append(ipaddress_v6 + "/" + ipaddress_mask)
@@ -212,7 +216,6 @@ def extract_file_ips(input_files):
             print("ERROR: Unable to convert file to list: {0}".format(input_file))
     # Remove duplicates and return the capture interesting terms
     return (list(set(capture_list_ipv6)), list(set(capture_list_ipv4)))
-
 
 # This function replaces the IPs in the input_file using the map_ld
 # Try to make this function replace text using textmap and regexmap
@@ -1035,6 +1038,13 @@ if __name__ == '__main__':
     else:
         print("ERROR: Input File: [{0}] - Is not a valid File or Directory!".format(input_file))
         exit(0)
+
+    # Calling IPv6 Anonymizer Class
+    anon = IPv6Anonymizer(salt="my-secret")
+
+    print(anon.anonymize("2001:db8:abcd::/48"))
+    print(anon.anonymize("2001:db8:abcd::1"))
+    print(anon.anonymize("2001:db8:abcd::2"))
 
     # Main Program Loop
     print('********************************************')
