@@ -1039,12 +1039,7 @@ if __name__ == '__main__':
         print("ERROR: Input File: [{0}] - Is not a valid File or Directory!".format(input_file))
         exit(0)
 
-    # Calling IPv6 Anonymizer Class
-    anon = IPv6Anonymizer(salt="my-secret")
 
-    print(anon.anonymize("2001:db8:abcd::/48"))
-    print(anon.anonymize("2001:db8:abcd::1"))
-    print(anon.anonymize("2001:db8:abcd::2"))
 
     # Main Program Loop
     print('********************************************')
@@ -1057,6 +1052,14 @@ if __name__ == '__main__':
     print("##############################")
     print("# Starting Main Program Loop #")
     print("##############################\n")
+
+    # Calling IPv6 Anonymizer Class
+    anon = IPv6Anonymizer(salt="my-secret")
+    print("*** ANONYMIZED STRINGS ***")
+    print(anon.anonymize("2001:db8:abcd::/48"))
+    print(anon.anonymize("2001:db8:abcd::1"))
+    print(anon.anonymize("2001:db8:abcd::2"))
+
     capture_ld = []
     try:
         # Run this if the argument is a directory...
